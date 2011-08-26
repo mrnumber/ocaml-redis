@@ -1,0 +1,6 @@
+name = "redis"
+version = "0.1"
+description = "bindings for redis"
+requires = "extlib"
+archive(byte) = "redis.cma"
+archive(native) = "redis.cmxa"
