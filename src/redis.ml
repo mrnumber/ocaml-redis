@@ -56,7 +56,7 @@ module Make(A : sig
   (* Lwt_unix stuff *)
   val socket  : Unix.socket_domain -> Unix.socket_type -> int -> file_descr
   val connect : file_descr -> Unix.sockaddr -> unit _r
-  val close   : file_descr -> unit
+  val close   : file_descr -> unit _r
 
   (* Lwt_chan stuff *)
   val in_channel_of_descr  : file_descr -> in_channel
@@ -337,10 +337,10 @@ struct
     connect spec >>= fun c ->
     try
       let r = f c in
-      let () = disconnect c in
+      disconnect c >>= fun () ->
       A.return r
     with e ->
-      disconnect c;
+      disconnect c >>= fun () ->
       A.fail e
 
   (* Raises Error if password is invalid. *)
