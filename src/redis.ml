@@ -56,7 +56,7 @@ module Make(A : sig
   (* Lwt_unix stuff *)
   val socket  : Unix.socket_domain -> Unix.socket_type -> int -> file_descr
   val connect : file_descr -> Unix.sockaddr -> unit _r
-  val close   : file_descr -> unit _r
+  val close   : file_descr -> unit
 
   (* Lwt_chan stuff *)
   val in_channel_of_descr  : file_descr -> in_channel
@@ -132,8 +132,7 @@ struct
   let read_bulk in_ch =
     read_line in_ch >>= (int_of_string |>> function
       | -1 -> A.return @< `Bulk None
-      | 0  -> A.return @< `Bulk (Some "")
-      | n when n > 0 ->
+      | n when n >= 0 ->
           read_fixed_line n in_ch >>= fun data ->
           A.return @< `Bulk (Some data)
       | n ->
@@ -337,10 +336,10 @@ struct
     connect spec >>= fun c ->
     try
       let r = f c in
-      disconnect c >>= fun () ->
+      let () = disconnect c in
       A.return r
     with e ->
-      disconnect c >>= fun () ->
+      disconnect c;
       A.fail e
 
   (* Raises Error if password is invalid. *)
