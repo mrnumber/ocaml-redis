@@ -2,6 +2,7 @@
 
     This has only been tested with Redis 2.2, but will probably work for >= 2.0
  **)
+open Extlib
 
 (* Handy function operators (defined in seed library, but trying not to depend on that yet) *)
 let (|>) x f = f x
