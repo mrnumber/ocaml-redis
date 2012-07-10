@@ -4,7 +4,7 @@ Ocaml bindings for [Redis](http://redis.io/)
 
 ## Dependencies
 
-* [ExtLib](http://code.google.com/p/ocaml-extlib/)
+* [Batteries](https://github.com/ocaml-batteries-team/batteries-included.git)
 
 (but see the [META](https://github.com/mrnumber/ocaml-redis/blob/master/src/META) to be sure)
 

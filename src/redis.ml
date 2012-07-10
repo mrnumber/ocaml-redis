@@ -2,21 +2,7 @@
 
     This has only been tested with Redis 2.2, but will probably work for >= 2.0
  **)
-open Extlib
-
-(* Handy function operators (defined in seed library, but trying not to depend on that yet) *)
-let (|>) x f = f x
-  (** Pipeline in F# syntax *)
-
-let (|>>) f g x = f x |> g
-  (** Reverse compose: F#'s >> *)
-
-let (@<) f x = f x
-  (** Reverse pipeline (right associative): F#'s <| *)
-
-let (@<<) f g x = f (g x)
-  (** Compose: Jane Street's $, Haskell's ., F#'s << *)
-
+open Batteries
 
 (* reply from server *)
 type reply = [
@@ -101,7 +87,7 @@ struct
     A.input_char in_ch >>= fun c2 ->
     match c1, c2 with
       | '\r', '\n' -> A.return line
-      | _          -> A.fail @< Unrecognized ("Expected terminator", line)
+      | _          -> A.fail <| Unrecognized ("Expected terminator", line)
 
   let read_line in_ch =
     let buf = Buffer.create 32 in
@@ -110,7 +96,7 @@ struct
         | '\r' ->
             A.input_char in_ch >>= (function
               | '\n' ->
-                  A.return @< Buffer.contents buf
+                  A.return <| Buffer.contents buf
               | c ->
                   Buffer.add_char buf '\r';
                   Buffer.add_char buf c;
@@ -131,27 +117,27 @@ struct
 
   (* this expects the initial '$' to have already been consumed *)
   let read_bulk in_ch =
-    read_line in_ch >>= (int_of_string |>> function
-      | -1 -> A.return @< `Bulk None
+    read_line in_ch >>= (int_of_string |- function
+      | -1 -> A.return <| `Bulk None
       | n when n >= 0 ->
           read_fixed_line n in_ch >>= fun data ->
-          A.return @< `Bulk (Some data)
+          A.return <| `Bulk (Some data)
       | n ->
-          A.fail @< Unrecognized ("Invalid bulk length", string_of_int n)
+          A.fail <| Unrecognized ("Invalid bulk length", string_of_int n)
           )
 
   (* this expects the initial '*' to have already been consumed *)
   let read_multibulk in_ch =
     let rec loop acc n =
       if n <= 0 then
-        A.return @< `Multibulk (List.rev acc)
+        A.return <| `Multibulk (List.rev acc)
       else
         (A.input_char in_ch >>= function
            | '$' ->
                (read_bulk in_ch >>= function
                  | `Bulk data -> loop (data :: acc) (n - 1))
            | c ->
-               A.fail @< Unrecognized ("Unexpected char in multibulk", Char.escaped c)
+               A.fail <| Unrecognized ("Unexpected char in multibulk", Char.escaped c)
         )
     in
     read_line in_ch >>= fun line ->
@@ -161,9 +147,9 @@ struct
   let read_reply in_ch =
     A.input_char in_ch >>= function
       | '+' ->
-          read_line in_ch >>= fun s -> A.return @< `Status s
+          read_line in_ch >>= fun s -> A.return <| `Status s
       | '-' ->
-          read_line in_ch >>= fun s -> A.return @< `Error s
+          read_line in_ch >>= fun s -> A.return <| `Error s
       | ':' ->
           read_integer in_ch
       | '$' ->
@@ -171,7 +157,7 @@ struct
       | '*' ->
           read_multibulk in_ch
       | c ->
-          A.fail @< Unrecognized ("Unexpected char in reply", Char.escaped c)
+          A.fail <| Unrecognized ("Unexpected char in reply", Char.escaped c)
 
   let read_reply_exn in_ch =
     read_reply in_ch >>= function
@@ -237,7 +223,7 @@ struct
 
   (* multibulks all of whose entries are not nil *)
   let return_no_nil_multibulk reply =
-    return_multibulk reply >>= A.return @<< (ExtList.List.filter_map (fun x -> x))
+    return_multibulk reply >>= A.return -| (List.filter_map (fun x -> x))
 
   let return_key_value_multibulk reply =
     return_multibulk reply >>= fun list ->
@@ -253,7 +239,7 @@ struct
       try
         A.return
           (loop [] list |>
-            ExtList.List.filter_map
+            List.filter_map
               (function
                 | (Some k, Some v) -> Some (k, v)
                 | _ -> None
@@ -269,9 +255,9 @@ struct
   let return_info_bulk reply =
     return_bulk reply >>= function
       | Some b ->
-          let fields = ExtString.String.nsplit b "\r\n" in
+          let fields = String.nsplit b "\r\n" in
           let fields = List.filter (fun x -> x <> "") fields in
-          A.return (List.map (fun f -> ExtString.String.split f ":") fields)
+          A.return (List.map (fun f -> String.split f ":") fields)
       | None   -> A.return []
 
   (* generate command for SORT *)
@@ -336,7 +322,7 @@ struct
   let with_connection spec f =
     connect spec >>= fun c ->
     try
-      let r = f c in
+      f c >>= fun r ->
       let () = disconnect c in
       A.return r
     with e ->
