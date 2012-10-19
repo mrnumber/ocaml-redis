@@ -1,6 +1,12 @@
-name = "redis"
-version = "0.1"
-description = "bindings for redis"
+# OASIS_START
+# DO NOT EDIT (digest: c1d58a95b668ebdaa84f37543adb4c46)
+version = "0.2"
+description = "Ocaml bindings for Redis"
 requires = "batteries"
 archive(byte) = "redis.cma"
+archive(byte, plugin) = "redis.cma"
 archive(native) = "redis.cmxa"
+archive(native, plugin) = "redis.cmxs"
+exists_if = "redis.cma"
+# OASIS_STOP
+

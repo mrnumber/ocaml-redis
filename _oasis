@@ -1,0 +1,13 @@
+OASISFormat: 0.3
+Name:        redis
+Version:     0.2
+Synopsis:    Ocaml bindings for Redis
+Authors:     Mike Wells
+License:     BSD3
+Plugins:     META (0.3), DevFiles (0.3)
+
+Library redis
+  Path:       src
+  BuildTools: ocamlbuild
+  Modules:    Redis
+  BuildDepends: batteries
