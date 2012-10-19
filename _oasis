@@ -5,9 +5,22 @@ Synopsis:    Ocaml bindings for Redis
 Authors:     Mike Wells
 License:     BSD3
 Plugins:     META (0.3), DevFiles (0.3)
+BuildTools:  ocamlbuild
 
 Library redis
-  Path:       src
-  BuildTools: ocamlbuild
-  Modules:    Redis
+  Path: src
+  Modules: Redis, Client, Make
   BuildDepends: batteries
+
+Flag lwt
+  Description: build the Lwt client
+  Default: false
+
+Library redis_lwt
+  Build$: flag(lwt)
+  Install$: flag(lwt)
+  Path: src
+  Findlibname: lwt
+  FindlibParent: redis
+  Modules: Redis_lwt
+  BuildDepends: lwt.unix, lwt, redis
