@@ -11,9 +11,10 @@ module IO : sig
   val return : 'a -> 'a
   val fail : exn -> 'a
 
-  val socket  : Unix.socket_domain -> Unix.socket_type -> int -> file_descr
+  val socket : Unix.socket_domain -> Unix.socket_type -> int -> file_descr
   val connect : file_descr -> Unix.sockaddr -> unit
-  val close   : file_descr -> unit
+  val close : file_descr -> unit
+  val sleep : float -> unit
 
   val in_channel_of_descr : file_descr -> in_channel
   val out_channel_of_descr : file_descr -> out_channel
@@ -30,3 +31,4 @@ module IO : sig
 end
 
 module Client : module type of Client.Make(IO)
+module Mutex : module type of Mutex.Make(IO)

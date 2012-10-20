@@ -16,6 +16,7 @@ module type IO = sig
   val socket  : Unix.socket_domain -> Unix.socket_type -> int -> file_descr
   val connect : file_descr -> Unix.sockaddr -> unit t
   val close   : file_descr -> unit t
+  val sleep   : float -> unit t
 
   (* Lwt_chan stuff *)
   val in_channel_of_descr  : file_descr -> in_channel

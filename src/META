@@ -1,8 +1,8 @@
 # OASIS_START
-# DO NOT EDIT (digest: 6ad3ca4541fc51a23b20b5302c08599e)
+# DO NOT EDIT (digest: b056c40693e1e9ada07100e2100493f0)
 version = "0.2"
 description = "Ocaml bindings for Redis"
-requires = "batteries"
+requires = "batteries uuidm"
 archive(byte) = "redis.cma"
 archive(byte, plugin) = "redis.cma"
 archive(native) = "redis.cmxa"

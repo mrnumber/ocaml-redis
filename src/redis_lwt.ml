@@ -14,6 +14,7 @@ module IO = struct
   let socket = Lwt_unix.socket
   let connect = Lwt_unix.connect
   let close = Lwt_unix.close
+  let sleep = Lwt_unix.sleep
 
   let in_channel_of_descr = Lwt_chan.in_channel_of_descr
   let out_channel_of_descr = Lwt_chan.out_channel_of_descr
@@ -30,3 +31,4 @@ module IO = struct
 end
 
 module Client = Client.Make(IO)
+module Mutex = Mutex.Make(IO)

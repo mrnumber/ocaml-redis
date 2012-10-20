@@ -14,6 +14,7 @@ module IO : sig
   val socket : Lwt_unix.socket_domain -> Lwt_unix.socket_type -> int -> file_descr
   val connect : file_descr -> Lwt_unix.sockaddr -> unit Lwt.t
   val close : file_descr -> unit Lwt.t
+  val sleep : float -> unit Lwt.t
 
   val in_channel_of_descr : file_descr -> in_channel
   val out_channel_of_descr : file_descr -> out_channel
@@ -30,6 +31,7 @@ module IO : sig
 end
 
 module Client : module type of Client.Make(IO)
+module Mutex : module type of Mutex.Make(IO)
 
 
 
