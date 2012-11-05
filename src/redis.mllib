@@ -1,7 +1,8 @@
 # OASIS_START
-# DO NOT EDIT (digest: 0dd11fbaa8484358a9f83ffb946a5646)
+# DO NOT EDIT (digest: b6215bd7fcbcf64a8949d29d7e2d32d3)
 Redis
 Client
+Cache
 Mutex
 Make
 # OASIS_STOP
