@@ -28,7 +28,7 @@ type connection_spec = {
 }
 
 (* Make communication module *)
-module Make(IO:Make.IO) = struct
+module Make(IO : Make.IO) = struct
   let (>>=) = IO.(>>=)
 
   type connection = {

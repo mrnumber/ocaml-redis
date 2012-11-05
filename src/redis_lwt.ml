@@ -31,4 +31,5 @@ module IO = struct
 end
 
 module Client = Client.Make(IO)
-module Mutex = Mutex.Make(IO)
+module Cache = Cache.Make(IO)(Client)
+module Mutex = Mutex.Make(IO)(Client)

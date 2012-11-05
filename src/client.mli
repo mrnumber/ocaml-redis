@@ -27,7 +27,7 @@ type connection_spec = {
 }
 
 (* Make communication module *)
-module Make(IO:Make.IO) : sig
+module Make(IO : Make.IO) : sig
   type connection
 
   val connect : connection_spec -> connection IO.t
