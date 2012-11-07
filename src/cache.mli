@@ -14,7 +14,8 @@ end
 
 (** Make a redis_cache *)
 module Make(IO : Make.IO)(Client : module type of Client.Make(IO))(S : S) : sig
-  val set : Client.connection -> S.key -> S.data -> unit IO.t
-  val get : Client.connection -> S.key -> S.data option IO.t
-  val delete : Client.connection -> S.key -> unit
+  open Client
+  val set : connection -> S.key -> S.data -> unit IO.t
+  val get : connection -> S.key -> S.data option IO.t
+  val delete : connection -> S.key -> unit
 end

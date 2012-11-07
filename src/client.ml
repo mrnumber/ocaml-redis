@@ -312,7 +312,10 @@ module Make(IO : Make.IO) = struct
 
   let ping connection =
     let command = [ "PING" ] in
-    send_request connection command >>= (return_expected_status "PONG")
+    IO.try_bind
+      (fun () -> send_request connection command)
+      (function `Status "PONG" -> IO.return true | _ -> IO.return false)
+      (fun _ -> IO.return false)
 
   let quit connection =
     let command = [ "QUIT" ] in

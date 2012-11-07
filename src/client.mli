@@ -38,7 +38,7 @@ module Make(IO : Make.IO) : sig
   val auth : connection -> string -> unit IO.t
 
   val echo : connection -> string -> string option IO.t
-  val ping : connection -> unit IO.t
+  val ping : connection -> bool IO.t
   val quit : connection -> unit IO.t
 
   (* Switch to a different db; raises Error if index is invalid. *)
