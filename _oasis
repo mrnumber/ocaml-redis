@@ -9,7 +9,10 @@ BuildTools:  ocamlbuild
 
 Library redis
   Path: src
-  Modules: Redis, Client, Cache, Mutex, Make
+  Findlibname: redis
+  Pack: true
+  Modules: Redis_sync
+  InternalModules: Client, Cache, Mutex, Make
   BuildDepends: batteries, uuidm
 
 Flag lwt

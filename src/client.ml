@@ -4,29 +4,6 @@
  **)
 open Batteries
 
-(* reply from server *)
-type reply = [
-  | `Status of string
-  | `Error of string
-  | `Int of int
-  | `Int64 of Int64.t
-  | `Bulk of string option
-  | `Multibulk of string option list
-]
-
-(* error responses from server *)
-exception Error of string
-
-(* these signal protocol errors *)
-exception Unexpected of reply
-exception Unrecognized of string * string (* explanation, data *)
-
-(* server connection info *)
-type connection_spec = {
-  host : string;
-  port : int;
-}
-
 (* Make communication module *)
 module Make(IO : Make.IO) = struct
   let (>>=) = IO.(>>=)
@@ -35,6 +12,29 @@ module Make(IO : Make.IO) = struct
     fd     : IO.file_descr;
     in_ch  : IO.in_channel;
     out_ch : IO.out_channel;
+  }
+
+  (* reply from server *)
+  type reply = [
+    | `Status of string
+    | `Error of string
+    | `Int of int
+    | `Int64 of Int64.t
+    | `Bulk of string option
+    | `Multibulk of string option list
+  ]
+
+  (* error responses from server *)
+  exception Error of string
+
+  (* these signal protocol errors *)
+  exception Unexpected of reply
+  exception Unrecognized of string * string (* explanation, data *)
+
+  (* server connection info *)
+  type connection_spec = {
+    host : string;
+    port : int;
   }
 
   let write out_ch args =

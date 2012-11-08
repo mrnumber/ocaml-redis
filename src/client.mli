@@ -3,32 +3,32 @@
     This has only been tested with Redis 2.2, but will probably work for >= 2.0
  **)
 
-(* reply from server *)
-type reply = [
-  | `Status of string
-  | `Error of string
-  | `Int of int
-  | `Int64 of Int64.t
-  | `Bulk of string option
-  | `Multibulk of string option list
-]
-
-(* error responses from server *)
-exception Error of string
-
-(* these signal protocol errors *)
-exception Unexpected of reply
-exception Unrecognized of string * string (* explanation, data *)
-
-(* server connection info *)
-type connection_spec = {
-  host : string;
-  port : int;
-}
-
 (* Make communication module *)
 module Make(IO : Make.IO) : sig
   type connection
+
+  (* reply from server *)
+  type reply = [
+    | `Status of string
+    | `Error of string
+    | `Int of int
+    | `Int64 of Int64.t
+    | `Bulk of string option
+    | `Multibulk of string option list
+  ]
+
+  (* error responses from server *)
+  exception Error of string
+
+  (* these signal protocol errors *)
+  exception Unexpected of reply
+  exception Unrecognized of string * string (* explanation, data *)
+
+  (* server connection info *)
+  type connection_spec = {
+    host : string;
+    port : int;
+  }
 
   val connect : connection_spec -> connection IO.t
   val disconnect : connection -> unit IO.t

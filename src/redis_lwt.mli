@@ -1,3 +1,5 @@
+open Redis
+
 module IO : sig
   type 'a t = 'a Lwt.t
   type file_descr = Lwt_unix.file_descr
