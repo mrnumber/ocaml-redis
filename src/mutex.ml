@@ -26,11 +26,13 @@ module Make(IO : Make.IO)(Client : module type of Client.Make(IO)) = struct
 
   let release conn mutex id =
     watch conn [mutex] >> get conn mutex >>= function
-      | Some x when x = id -> multi conn >> del conn [mutex] >> exec conn >> IO.return ()
+      | Some x when x = id ->
+          multi conn >> queue (fun () -> del conn [mutex]) >> exec conn >>
+          IO.return ()
       | _ -> unwatch conn >> IO.fail (Error "lock was lost")
 
   let with_mutex conn ?atime ?ltime mutex fn =
-    let id = Uuidm.(to_bytes (create `V4)) in
+    let id = Uuidm.(to_string (create `V4)) in
 
     acquire conn ?atime ?ltime mutex id >>
     try
