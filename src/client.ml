@@ -21,7 +21,7 @@ module Make(IO : Make.IO) = struct
     | `Int of int
     | `Int64 of Int64.t
     | `Bulk of string option
-    | `Multibulk of string option list
+    | `Multibulk of reply list
   ]
 
   (* error responses from server *)
@@ -99,24 +99,18 @@ module Make(IO : Make.IO) = struct
           )
 
   (* this expects the initial '*' to have already been consumed *)
-  let read_multibulk in_ch =
+  let rec read_multibulk in_ch =
     let rec loop acc n =
       if n <= 0 then
         IO.return <| `Multibulk (List.rev acc)
       else
-        (IO.input_char in_ch >>= function
-           | '$' ->
-               (read_bulk in_ch >>= function
-                 | `Bulk data -> loop (data :: acc) (n - 1))
-           | c ->
-               IO.fail <| Unrecognized ("Unexpected char in multibulk", Char.escaped c)
-        )
+        read_reply in_ch >>= fun data -> loop (data :: acc) (n - 1)
     in
     read_line in_ch >>= fun line ->
     let num_bulk = int_of_string line in
     loop [] num_bulk
 
-  let read_reply in_ch =
+  and read_reply in_ch =
     IO.input_char in_ch >>= function
       | '+' ->
           read_line in_ch >>= fun s -> IO.return <| `Status s
@@ -175,6 +169,9 @@ module Make(IO : Make.IO) = struct
   let return_ok_status =
     return_expected_status "OK"
 
+  let return_queued_status =
+    return_expected_status "QUEUED"
+
   let return_int = function
     | `Int n -> IO.return n
     | x      -> IO.fail (Unexpected x)
@@ -193,12 +190,19 @@ module Make(IO : Make.IO) = struct
     | `Multibulk m -> IO.return m
     | x            -> IO.fail (Unexpected x)
 
+  let return_bulk_multibulk reply =
+    try
+      return_multibulk reply >>= IO.return -| List.map (function
+        | `Bulk b -> b
+        | x -> raise (Unexpected x))
+    with e -> IO.fail e
+
   (* multibulks all of whose entries are not nil *)
   let return_no_nil_multibulk reply =
-    return_multibulk reply >>= IO.return -| (List.filter_map identity)
+    return_bulk_multibulk reply >>= IO.return -| List.filter_map identity
 
   let return_key_value_multibulk reply =
-    return_multibulk reply >>= fun list ->
+    return_bulk_multibulk reply >>= fun list ->
       (* this assumes the list length is even *)
       let rec loop acc = function
         | x :: y :: tail ->
@@ -219,10 +223,11 @@ module Make(IO : Make.IO) = struct
           )
       with e -> IO.fail e
 
-  let return_opt_pair_multibulk = function
-    | `Multibulk []                 -> IO.return None
-    | `Multibulk [ Some x; Some y ] -> IO.return (Some (x, y))
-    | x                             -> IO.fail (Unexpected x)
+  let return_opt_pair_multibulk reply =
+    return_bulk_multibulk reply >>= function
+      | []               -> IO.return None
+      | [Some x; Some y] -> IO.return (Some (x, y))
+      | x                -> IO.fail (Invalid_argument "Expected nil or two-element multi-bulk")
 
   let return_info_bulk reply =
     return_bulk reply >>= function
@@ -490,7 +495,7 @@ module Make(IO : Make.IO) = struct
 
   let mget connection keys =
     let command = "MGET" :: keys in
-    send_request connection command >>= return_multibulk
+    send_request connection command >>= return_bulk_multibulk
 
   (* This is atomic: either all keys are set or none are. *)
   let mset connection items =
@@ -569,7 +574,7 @@ module Make(IO : Make.IO) = struct
 
   let hmget connection key fields =
     let command = "HMGET" :: key :: fields in
-    send_request connection command >>= return_multibulk
+    send_request connection command >>= return_bulk_multibulk
 
   let hmset connection key items =
     let command = "HMSET" :: key :: (interleave items) in
@@ -778,7 +783,7 @@ module Make(IO : Make.IO) = struct
   (* Executes all previously queued commands in a transaction and restores the connection state to normal. *)
   let exec connection =
     let command = [ "EXEC" ] in
-    send_request connection command >>= return_no_nil_multibulk
+    send_request connection command >>= return_multibulk
 
   (* Flushes all previously queued commands in a transaction and restores the connection state to normal. *)
   let discard connection =
@@ -794,6 +799,12 @@ module Make(IO : Make.IO) = struct
   let unwatch connection =
     let command = [ "UNWATCH" ] in
     send_request connection command >>= return_ok_status
+
+  let queue fn =
+    IO.try_bind fn (fun _ -> IO.return ())
+      (function
+        | Unexpected x -> return_queued_status x
+        | e -> IO.fail e)
 
   (** Server *)
 
