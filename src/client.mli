@@ -14,7 +14,7 @@ module Make(IO : Make.IO) : sig
     | `Int of int
     | `Int64 of Int64.t
     | `Bulk of string option
-    | `Multibulk of string option list
+    | `Multibulk of reply list
   ]
 
   (* error responses from server *)
@@ -269,7 +269,7 @@ module Make(IO : Make.IO) : sig
   val multi : connection -> unit IO.t
 
   (* Executes all previously queued commands in a transaction and restores the connection state to normal. *)
-  val exec : connection -> string list IO.t
+  val exec : connection -> reply list IO.t
 
   (* Flushes all previously queued commands in a transaction and restores the connection state to normal. *)
   val discard : connection -> unit IO.t
@@ -279,6 +279,8 @@ module Make(IO : Make.IO) : sig
 
   (* Flushes all the previously watched keys for a transaction. *)
   val unwatch : connection -> unit IO.t
+
+  val queue : (unit -> 'a IO.t) -> unit IO.t
 
   (** Server *)
 
