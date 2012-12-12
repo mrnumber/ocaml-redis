@@ -59,7 +59,7 @@ module Make(IO : Make.IO) = struct
     IO.input_char in_ch >>= fun c2 ->
     match c1, c2 with
       | '\r', '\n' -> IO.return line
-      | _          -> IO.fail <| Unrecognized ("Expected terminator", line)
+      | _          -> IO.fail (Unrecognized ("Expected terminator", line))
 
   let read_line in_ch =
     let buf = Buffer.create 32 in
@@ -68,7 +68,7 @@ module Make(IO : Make.IO) = struct
         | '\r' ->
             IO.input_char in_ch >>= (function
               | '\n' ->
-                  IO.return <| Buffer.contents buf
+                  IO.return (Buffer.contents buf)
               | c ->
                   Buffer.add_char buf '\r';
                   Buffer.add_char buf c;
@@ -90,19 +90,19 @@ module Make(IO : Make.IO) = struct
   (* this expects the initial '$' to have already been consumed *)
   let read_bulk in_ch =
     read_line in_ch >>= (int_of_string |- function
-      | -1 -> IO.return <| `Bulk None
+      | -1 -> IO.return (`Bulk None)
       | n when n >= 0 ->
           read_fixed_line n in_ch >>= fun data ->
-          IO.return <| `Bulk (Some data)
+          IO.return (`Bulk (Some data))
       | n ->
-          IO.fail <| Unrecognized ("Invalid bulk length", string_of_int n)
+          IO.fail (Unrecognized ("Invalid bulk length", string_of_int n))
           )
 
   (* this expects the initial '*' to have already been consumed *)
   let rec read_multibulk in_ch =
     let rec loop acc n =
       if n <= 0 then
-        IO.return <| `Multibulk (List.rev acc)
+        IO.return (`Multibulk (List.rev acc))
       else
         read_reply in_ch >>= fun data -> loop (data :: acc) (n - 1)
     in
@@ -113,9 +113,9 @@ module Make(IO : Make.IO) = struct
   and read_reply in_ch =
     IO.input_char in_ch >>= function
       | '+' ->
-          read_line in_ch >>= fun s -> IO.return <| `Status s
+          read_line in_ch >>= fun s -> IO.return (`Status s)
       | '-' ->
-          read_line in_ch >>= fun s -> IO.return <| `Error s
+          read_line in_ch >>= fun s -> IO.return (`Error s)
       | ':' ->
           read_integer in_ch
       | '$' ->
@@ -123,7 +123,7 @@ module Make(IO : Make.IO) = struct
       | '*' ->
           read_multibulk in_ch
       | c ->
-          IO.fail <| Unrecognized ("Unexpected char in reply", Char.escaped c)
+          IO.fail (Unrecognized ("Unexpected char in reply", Char.escaped c))
 
   let read_reply_exn in_ch =
     read_reply in_ch >>= function
