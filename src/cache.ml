@@ -31,7 +31,8 @@ module Make(IO : Make.IO)(Client : module type of Client.Make(IO))(S : S) = stru
 
   let get r key =
     let key = S.cache_key key in
-    get r key >>= IO.return -| Option.map S.data_of_string
+    get r key >>= fun value ->
+    IO.return (Option.map S.data_of_string value)
 
   let delete r key =
     let key = S.cache_key key in

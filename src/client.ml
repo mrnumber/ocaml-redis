@@ -89,14 +89,14 @@ module Make(IO : Make.IO) = struct
 
   (* this expects the initial '$' to have already been consumed *)
   let read_bulk in_ch =
-    read_line in_ch >>= (int_of_string |- function
-      | -1 -> IO.return (`Bulk None)
-      | n when n >= 0 ->
-          read_fixed_line n in_ch >>= fun data ->
-          IO.return (`Bulk (Some data))
-      | n ->
-          IO.fail (Unrecognized ("Invalid bulk length", string_of_int n))
-          )
+    read_line in_ch >>= fun line ->
+      match int_of_string line with
+        | -1 -> IO.return (`Bulk None)
+        | n when n >= 0 ->
+            read_fixed_line n in_ch >>= fun data ->
+            IO.return (`Bulk (Some data))
+        | n ->
+            IO.fail (Unrecognized ("Invalid bulk length", string_of_int n))
 
   (* this expects the initial '*' to have already been consumed *)
   let rec read_multibulk in_ch =
@@ -142,10 +142,17 @@ module Make(IO : Make.IO) = struct
 
   let interleave list =
     let rec loop acc = function
-      | (x, y) :: tail ->
-          loop (y :: x :: acc ) tail
-      | [] ->
-          List.rev acc
+      | (x, y) :: tail -> loop (y :: x :: acc ) tail
+      | [] -> List.rev acc
+    in
+    loop [] list
+
+  (* this assumes the list length is even *)
+  let deinterleave list =
+    let rec loop acc = function
+      | x :: y :: tail -> loop ((x, y) :: acc) tail
+      | [] -> List.rev acc
+      | _ -> raise (Invalid_argument "List length must be even")
     in
     loop [] list
 
@@ -192,35 +199,25 @@ module Make(IO : Make.IO) = struct
 
   let return_bulk_multibulk reply =
     try
-      return_multibulk reply >>= IO.return -| List.map (function
+      return_multibulk reply >>= fun list ->
+      IO.return (List.map (function
         | `Bulk b -> b
-        | x -> raise (Unexpected x))
+        | x -> raise (Unexpected x)
+      ) list)
     with e -> IO.fail e
 
   (* multibulks all of whose entries are not nil *)
   let return_no_nil_multibulk reply =
-    return_bulk_multibulk reply >>= IO.return -| List.filter_map identity
+    return_bulk_multibulk reply >>= fun list ->
+    IO.return (List.filter_map identity list)
 
   let return_key_value_multibulk reply =
     return_bulk_multibulk reply >>= fun list ->
-      (* this assumes the list length is even *)
-      let rec loop acc = function
-        | x :: y :: tail ->
-            loop ((x, y) :: acc) tail
-        | [] ->
-            List.rev acc
-        | _ ->
-            raise (Invalid_argument "List length must be even")
-      in
       try
-        IO.return
-          (loop [] list |>
-            List.filter_map
-              (function
-                | (Some k, Some v) -> Some (k, v)
-                | _ -> None
-              )
-          )
+        IO.return (List.filter_map (function
+          | (Some k, Some v) -> Some (k, v)
+          | _ -> None
+        ) (deinterleave list))
       with e -> IO.fail e
 
   let return_opt_pair_multibulk reply =
