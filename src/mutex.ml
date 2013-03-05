@@ -34,13 +34,13 @@ module Make(IO : Make.IO)(Client : module type of Client.Make(IO)) = struct
 
   let with_mutex conn ?atime ?ltime mutex fn =
     let id = Uuidm.(to_string (create `V4)) in
-
     acquire conn ?atime ?ltime mutex id >>= fun _ ->
-    try
+    IO.catch
+    (* try *) (fun () ->
       fn () >>= fun res ->
       release conn mutex id >>= fun _ ->
-      IO.return res
-    with e ->
+      IO.return res)
+    (* catch *) (function e ->
       release conn mutex id >>= fun _ ->
-      IO.fail e
+      IO.fail e)
 end
