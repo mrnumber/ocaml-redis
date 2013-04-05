@@ -5,7 +5,11 @@
 
 (* Make communication module *)
 module Make(IO : Make.IO) : sig
-  type connection
+  type connection = private {
+    fd     : IO.file_descr;
+    in_ch  : IO.in_channel;
+    out_ch : IO.out_channel;
+  }
 
   (* reply from server *)
   type reply = [
