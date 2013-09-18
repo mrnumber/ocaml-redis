@@ -19,7 +19,7 @@ module Make(IO : Make.IO)(Client : module type of Client.Make(IO)) = struct
         | true -> expire conn mutex ltime >>= fun _ -> IO.return ()
         | _ -> update_ttl () >>= fun _ ->
             if Unix.time() < etime then IO.sleep(0.1) >>= loop
-            else IO.fail (Error "could not acquire lock")
+            else IO.fail (Error ("could not acquire lock " ^ mutex))
     in
     loop ()
 
@@ -30,7 +30,9 @@ module Make(IO : Make.IO)(Client : module type of Client.Make(IO)) = struct
           queue (fun () -> del conn [mutex]) >>= fun _ ->
           exec conn >>= fun _ ->
           IO.return ()
-      | _ -> unwatch conn >>= fun _ -> IO.fail (Error "lock was lost")
+      | _ ->
+          unwatch conn >>= fun _ ->
+          IO.fail (Error ("lock was lost: " ^ mutex))
 
   let with_mutex conn ?atime ?ltime mutex fn =
     let id = Uuidm.(to_string (create `V4)) in
