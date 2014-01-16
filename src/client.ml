@@ -780,6 +780,11 @@ module Make(IO : Make.IO) = struct
     let command = ["PUBSUB"; "CHANNELS"; message ] in
     send_request connection command >>= return_multibulk
 
+  (* Returns the number of subscribers (not counting clients subscribed to patterns) for the specified channels. *)
+  let pubsub_numsub connection channels =
+    let command = "PUBSUB" :: "NUMSUB":: channels in
+    send_request connection command >>= return_multibulk
+
   (** Transaction commands *)
 
   (* Marks the start of a transaction block. Subsequent commands will be queued for atomic execution using EXEC. *)

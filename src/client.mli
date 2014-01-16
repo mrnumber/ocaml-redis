@@ -275,6 +275,9 @@ module Make(IO : Make.IO) : sig
   (* Lists the currently active channels. If no pattern is specified, all channels are listed. *)
   val pubsub_channels : connection -> string option -> reply list IO.t
 
+  (* Returns the number of subscribers (not counting clients subscribed to patterns) for the specified channels. *)
+  val pubsub_numsub : connection -> string list -> reply list IO.t
+
   (** Transaction commands *)
 
   (* Marks the start of a transaction block. Subsequent commands will be queued for atomic execution using EXEC. *)
