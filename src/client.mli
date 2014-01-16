@@ -272,6 +272,9 @@ module Make(IO : Make.IO) : sig
   (* Post a message to a channel. Returns number of clients that received the message. *)
   val publish : connection -> string -> string -> int IO.t
 
+  (* Lists the currently active channels. If no pattern is specified, all channels are listed. *)
+  val pubsub_channels : connection -> string option -> reply list IO.t
+
   (** Transaction commands *)
 
   (* Marks the start of a transaction block. Subsequent commands will be queued for atomic execution using EXEC. *)

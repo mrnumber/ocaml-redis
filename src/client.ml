@@ -774,6 +774,12 @@ module Make(IO : Make.IO) = struct
     let command = [ "PUBLISH" ; channel ; message ] in
     send_request connection command >>= return_int
 
+  (* Lists the currently active channels. If no pattern is specified, all channels are listed. *)
+  let pubsub_channels connection channels =
+    let message = Option.default "*" channels in
+    let command = ["PUBSUB"; "CHANNELS"; message ] in
+    send_request connection command >>= return_multibulk
+
   (** Transaction commands *)
 
   (* Marks the start of a transaction block. Subsequent commands will be queued for atomic execution using EXEC. *)
