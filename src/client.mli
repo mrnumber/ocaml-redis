@@ -267,6 +267,11 @@ module Make(IO : Make.IO) : sig
   (* Like SUNION, but store result in destination. Returns size of result. *)
   val sunionstore : connection -> string -> string list -> int IO.t
 
+  (** Pub/sub commands *)
+
+  (* Post a message to a channel. Returns number of clients that received the message. *)
+  val publish : connection -> string -> string -> int IO.t
+
   (** Transaction commands *)
 
   (* Marks the start of a transaction block. Subsequent commands will be queued for atomic execution using EXEC. *)

@@ -769,6 +769,10 @@ module Make(IO : Make.IO) = struct
 
   (** Pub/sub commands *)
 
+  (* Post a message to a channel. Returns number of clients that received the message. *)
+  let publish connection channel message =
+    let command = [ "PUBLISH" ; channel ; message ] in
+    send_request connection command >>= return_int
 
   (** Transaction commands *)
 
