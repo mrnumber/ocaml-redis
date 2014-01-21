@@ -800,6 +800,11 @@ module Make(IO : Make.IO) = struct
     let command = "SUBSCRIBE" :: channels in
     write connection.out_ch command >>= fun () -> IO.return ()
 
+  (* Unsubscribes the client from the given channels, or from all of them if an empty list is given *)
+  let unsubscribe connection channels =
+    let command = "UNSUBSCRIBE" :: channels in
+    write connection.out_ch command
+
   (** Transaction commands *)
 
   (* Marks the start of a transaction block. Subsequent commands will be queued for atomic execution using EXEC. *)

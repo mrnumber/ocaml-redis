@@ -284,6 +284,9 @@ module Make(IO : Make.IO) : sig
   (* Subscribes the client to the specified channels. *)
   val subscribe : connection -> string list -> unit IO.t
 
+  (* Unsubscribes the client from the given channels, or from all of them if an empty list is given *)
+  val unsubscribe : connection -> string list -> unit IO.t
+
   (** Transaction commands *)
 
   (* Marks the start of a transaction block. Subsequent commands will be queued for atomic execution using EXEC. *)
