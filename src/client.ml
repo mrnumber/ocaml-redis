@@ -795,6 +795,11 @@ module Make(IO : Make.IO) = struct
     let command = "PUBSUB" :: "NUMSUB":: channels in
     send_request connection command >>= return_multibulk
 
+  (* Subscribes the client to the specified channels. *)
+  let subscribe connection channels =
+    let command = "SUBSCRIBE" :: channels in
+    write connection.out_ch command >>= fun () -> IO.return ()
+
   (** Transaction commands *)
 
   (* Marks the start of a transaction block. Subsequent commands will be queued for atomic execution using EXEC. *)
