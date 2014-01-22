@@ -4,6 +4,9 @@ module IO : sig
   type in_channel = Pervasives.in_channel
   type out_channel = Pervasives.out_channel
 
+  type zz = int
+  type 'a stream = 'a Stream.t
+
   val (>>=) : 'a -> ('a -> 'b) -> 'b
   val catch : (unit -> 'a) -> (exn -> 'a) -> 'a
   val try_bind : (unit -> 'a) -> ('a -> 'b) -> (exn -> 'b) -> 'b
@@ -28,6 +31,9 @@ module IO : sig
   val map : ('a -> 'b t) -> 'a list -> 'b list
   val map_serial : ('a -> 'b t) -> 'a list -> 'b list
   val fold_left : ('a -> 'b -> 'a t) -> 'a -> 'b list -> 'a
+
+  val stream_from : (zz -> 'b option t) -> 'b Stream.t
+  val stream_next : 'a Stream.t -> 'a
 end
 
 module Client : module type of Client.Make(IO)

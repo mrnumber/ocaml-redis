@@ -6,6 +6,9 @@ module IO = struct
   type in_channel = Lwt_chan.in_channel
   type out_channel = Lwt_chan.out_channel
 
+  type zz = unit
+  type 'a stream = 'a Lwt_stream.t
+
   let (>>=) = Lwt.(>>=)
   let catch = Lwt.catch
   let try_bind = Lwt.try_bind
@@ -30,6 +33,9 @@ module IO = struct
   let map = Lwt_util.map
   let map_serial = Lwt_util.map_serial
   let fold_left = Lwt_util.fold_left
+
+  let stream_from = Lwt_stream.from
+  let stream_next = Lwt_stream.next
 end
 
 module Client = Client.Make(IO)

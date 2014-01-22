@@ -8,12 +8,6 @@ open Batteries
 module Make(IO : Make.IO) = struct
   let (>>=) = IO.(>>=)
 
-  type connection = {
-    fd     : IO.file_descr;
-    in_ch  : IO.in_channel;
-    out_ch : IO.out_channel;
-  }
-
   (* reply from server *)
   type reply = [
     | `Status of string
@@ -23,6 +17,13 @@ module Make(IO : Make.IO) = struct
     | `Bulk of string option
     | `Multibulk of reply list
   ]
+
+  type connection = {
+    fd     : IO.file_descr;
+    in_ch  : IO.in_channel;
+    out_ch : IO.out_channel;
+    stream : reply list IO.stream;
+  }
 
   (* error responses from server *)
   exception Error of string
@@ -282,10 +283,17 @@ module Make(IO : Make.IO) = struct
       Unix.ADDR_INET (inet_addr, spec.port)
     in
     IO.connect s sock_addr >>= fun () ->
+    let in_ch = IO.in_channel_of_descr s in
     IO.return
       { fd = s;
-        in_ch = IO.in_channel_of_descr s;
+        in_ch = in_ch;
         out_ch = IO.out_channel_of_descr s;
+        stream =
+          let f _ =
+            read_reply_exn in_ch >>= fun resp ->
+            return_multibulk resp >>= fun b ->
+            IO.return (Some b) in
+          IO.stream_from f;
       }
 
   let disconnect connection =
@@ -302,6 +310,8 @@ module Make(IO : Make.IO) = struct
     with e ->
       disconnect c >>= fun () ->
       IO.fail e
+
+  let stream connection = connection.stream
 
   (* Raises Error if password is invalid. *)
   let auth connection password =

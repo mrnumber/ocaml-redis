@@ -4,6 +4,9 @@ module IO = struct
   type in_channel = Pervasives.in_channel
   type out_channel = Pervasives.out_channel
 
+  type zz = int
+  type 'a stream = 'a Stream.t
+
   let (>>=) a f = f a
   let catch f exn_handler = try f () with e -> exn_handler e
   let try_bind f bind_handler exn_handler = try f () >>= bind_handler with e -> exn_handler e
@@ -28,6 +31,9 @@ module IO = struct
   let map = List.map
   let map_serial = List.map
   let fold_left = List.fold_left
+
+  let stream_from = Stream.from
+  let stream_next = Stream.next
 end
 
 module Client = Client.Make(IO)

@@ -5,11 +5,6 @@
 
 (* Make communication module *)
 module Make(IO : Make.IO) : sig
-  type connection = private {
-    fd     : IO.file_descr;
-    in_ch  : IO.in_channel;
-    out_ch : IO.out_channel;
-  }
 
   (* reply from server *)
   type reply = [
@@ -20,6 +15,13 @@ module Make(IO : Make.IO) : sig
     | `Bulk of string option
     | `Multibulk of reply list
   ]
+
+  type connection = private {
+    fd     : IO.file_descr;
+    in_ch  : IO.in_channel;
+    out_ch : IO.out_channel;
+    stream : reply list IO.stream;
+  }
 
   (* error responses from server *)
   exception Error of string
@@ -37,6 +39,7 @@ module Make(IO : Make.IO) : sig
   val connect : connection_spec -> connection IO.t
   val disconnect : connection -> unit IO.t
   val with_connection : connection_spec -> (connection -> 'a IO.t) -> 'a IO.t
+  val stream : connection -> reply list IO.stream
 
   (* Raises Error if password is invalid. *)
   val auth : connection -> string -> unit IO.t
