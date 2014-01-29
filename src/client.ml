@@ -814,6 +814,14 @@ module Make(IO : Make.IO) = struct
     let command = "ZADD" :: key :: values in
     send_request connection command >>= return_int
 
+  (* Return a range of members in a sorted set, by index. *)
+  let zrange connection ?(withscores=false) key start stop =
+    let istart = string_of_int start in
+    let istop = string_of_int stop in
+    let scores = if withscores then ["withscores"] else [] in
+    let command = "ZRANGE" :: key :: istart :: istop :: scores in
+    send_request connection command >>= return_multibulk
+
   (** Transaction commands *)
 
   (* Marks the start of a transaction block. Subsequent commands will be queued for atomic execution using EXEC. *)
