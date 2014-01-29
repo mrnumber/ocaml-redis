@@ -822,6 +822,11 @@ module Make(IO : Make.IO) = struct
     let command = "ZRANGE" :: key :: istart :: istop :: scores in
     send_request connection command >>= return_multibulk
 
+  (* Remove one or more members from a sorted set. *)
+  let zrem connection members =
+    let command = "ZREM" :: members in
+    send_request connection command >>= return_int
+
   (** Transaction commands *)
 
   (* Marks the start of a transaction block. Subsequent commands will be queued for atomic execution using EXEC. *)

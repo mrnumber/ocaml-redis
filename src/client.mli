@@ -295,6 +295,9 @@ module Make(IO : Make.IO) : sig
   (* Return a range of members in a sorted set, by index. *)
   val zrange : connection -> ?withscores:bool -> string -> int -> int -> reply list IO.t
 
+  (* Remove one or more members from a sorted set. *)
+  val zrem : connection -> string list -> int IO.t
+
   (** Transaction commands *)
 
   (* Marks the start of a transaction block. Subsequent commands will be queued for atomic execution using EXEC. *)
