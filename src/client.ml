@@ -805,6 +805,15 @@ module Make(IO : Make.IO) = struct
     let command = "UNSUBSCRIBE" :: channels in
     write connection.out_ch command
 
+  (** Sorted Set commands *)
+
+  (* Add one or more members to a sorted set, or update its score if it already exists. *)
+  let zadd connection key values =
+    let f acc (s, v) = (string_of_int s) :: v :: acc in
+    let values = List.fold_left f [] values in
+    let command = "ZADD" :: key :: values in
+    send_request connection command >>= return_int
+
   (** Transaction commands *)
 
   (* Marks the start of a transaction block. Subsequent commands will be queued for atomic execution using EXEC. *)

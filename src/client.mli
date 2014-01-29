@@ -287,6 +287,11 @@ module Make(IO : Make.IO) : sig
   (* Unsubscribes the client from the given channels, or from all of them if an empty list is given *)
   val unsubscribe : connection -> string list -> unit IO.t
 
+  (** Sorted Set commands *)
+
+  (* Add one or more members to a sorted set, or update its score if it already exists. *)
+  val zadd : connection -> string -> (int * string) list -> int IO.t
+
   (** Transaction commands *)
 
   (* Marks the start of a transaction block. Subsequent commands will be queued for atomic execution using EXEC. *)
