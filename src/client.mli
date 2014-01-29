@@ -325,6 +325,9 @@ module Make(IO : Make.IO) : sig
   (* Load the specified Lua script into the script cache. Returns the SHA1 digest of the script for use with EVALSHA. *)
   val script_load : connection -> string -> string IO.t
 
+  (* Evaluates a script cached on the server side by its SHA1 digest. *)
+  val evalsha : connection -> string -> string list -> string list -> reply IO.t
+
   (** Server *)
 
   val bgrewriteaof : connection -> unit IO.t

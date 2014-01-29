@@ -880,6 +880,13 @@ module Make(IO : Make.IO) = struct
     let command = [ "SCRIPT"; "LOAD"; script ] in
     send_request connection command >>= return_no_nil_bulk
 
+  (* Evaluates a script cached on the server side by its SHA1 digest. *)
+  let evalsha connection sha keys args =
+    let nb_keys = string_of_int (List.length keys) in
+    let params = List.flatten [ keys; args ] in
+    let command = "EVALSHA" :: sha :: nb_keys :: params in
+    send_request connection command
+
   (** Server *)
 
   let bgrewriteaof connection =
