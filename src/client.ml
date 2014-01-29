@@ -161,6 +161,10 @@ module Make(IO : Make.IO) = struct
     | `Bulk b -> IO.return b
     | x       -> IO.fail (Unexpected x)
 
+  let return_no_nil_bulk = function
+    | `Bulk (Some b) -> IO.return b
+    | x              -> IO.fail (Unexpected x)
+
   let return_bool = function
     | `Int 0 -> IO.return false
     | `Int 1 -> IO.return true
@@ -868,6 +872,13 @@ module Make(IO : Make.IO) = struct
       (function
         | Unexpected x -> return_queued_status x
         | e -> IO.fail e)
+
+  (** Scripting commands *)
+
+  (* Load the specified Lua script into the script cache. Returns the SHA1 digest of the script for use with EVALSHA. *)
+  let script_load connection script =
+    let command = [ "SCRIPT"; "LOAD"; script ] in
+    send_request connection command >>= return_no_nil_bulk
 
   (** Server *)
 

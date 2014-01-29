@@ -320,6 +320,11 @@ module Make(IO : Make.IO) : sig
 
   val queue : (unit -> 'a IO.t) -> unit IO.t
 
+  (** Scripting commands *)
+
+  (* Load the specified Lua script into the script cache. Returns the SHA1 digest of the script for use with EVALSHA. *)
+  val script_load : connection -> string -> string IO.t
+
   (** Server *)
 
   val bgrewriteaof : connection -> unit IO.t
