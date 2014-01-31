@@ -822,6 +822,15 @@ module Make(IO : Make.IO) = struct
     let command = "ZRANGE" :: key :: istart :: istop :: scores in
     send_request connection command >>= return_multibulk
 
+  (* Return a range of members in a sorted set, by score. *)
+  let zrangebyscore connection ?(withscores=false) key min max =
+    let imin = string_of_int min in
+    let imax = string_of_int max in
+    let scores = if withscores then ["withscores"] else [] in
+    let command = "ZRANGEBYSCORE" :: key :: imin :: imax :: scores in
+    send_request connection command >>= return_multibulk
+
+
   (* Remove one or more members from a sorted set. *)
   let zrem connection members =
     let command = "ZREM" :: members in
