@@ -312,4 +312,31 @@ module Make(IO : Make.IO) : sig
 
   (* save and shutdown server *)
   val shutdown : connection -> unit IO.t
+
+  (** Sorted Set Commands **)
+  type agg_method = Sum | Min | Max
+  val zadd : connection -> string -> string -> int -> int IO.t
+  val zcard : connection -> string -> int IO.t
+  val zcount : connection -> string -> int -> int -> int IO.t
+  val zincrby : connection -> string -> string -> int -> string option IO.t
+  val zinterstore : connection -> ?weights:int list option -> ?agg_method:agg_method -> string -> string list -> int IO.t
+  val zlexcount : connection -> string -> string -> string -> int IO.t
+  val zrangebylex : ?limit:(int * int) option -> connection -> string -> string -> string -> string option list IO.t
+  val zrangebyscore : ?limit:(int * int) option -> connection -> string -> int -> int -> (string * float) list IO.t
+  val zrange : connection -> string -> int -> int -> (string * float) list IO.t
+  val zrank : connection -> string -> string -> int option IO.t
+  val zrem : connection -> string -> string list -> int IO.t
+  val zremrangebylex : connection -> string -> string -> string -> int IO.t
+  val zremrangebyrank : connection -> string -> int -> int -> int IO.t
+  val zremrangebyscore : connection -> string -> float -> float -> int IO.t
+  val zrevrange : connection -> string -> int -> int -> (string * float) list IO.t
+  val zrevrangebyscore : connection -> string -> int -> int -> (string * float) list IO.t
+  val zscore : connection -> string -> string -> float option IO.t
+  val zunionstore : connection -> ?weights:int list option -> ?agg_method:agg_method -> string -> string list -> int IO.t
+
+  (* Hyperloglog commands *)
+  val pfadd : connection -> string -> string list -> int IO.t
+  val pfcount : connection -> string list -> int IO.t
+  val pfmerge : connection -> string -> string list -> unit IO.t
+
 end
