@@ -314,29 +314,91 @@ module Make(IO : Make.IO) : sig
   val shutdown : connection -> unit IO.t
 
   (** Sorted Set Commands **)
+
+  (* How we aggregate common values in case of zunionstore and zinterstore *)
   type agg_method = Sum | Min | Max
+  (* Add value to a zset *)
   val zadd : connection -> string -> string -> int -> int IO.t
+
+  (* Size of zset *)
   val zcard : connection -> string -> int IO.t
+
+  (* Count elements in set between scores min and max *)
   val zcount : connection -> string -> int -> int -> int IO.t
+
+  (* Increment an items score *)
   val zincrby : connection -> string -> string -> int -> string option IO.t
+
+  (* Store intersection of multiple zsets *)
   val zinterstore : connection -> ?weights:int list option -> ?agg_method:agg_method -> string -> string list -> int IO.t
+
+  (* returns the number of elements in the sorted set at key with a value
+   * between min and max
+   * *)
   val zlexcount : connection -> string -> string -> string -> int IO.t
-  val zrangebylex : ?limit:(int * int) option -> connection -> string -> string -> string -> string option list IO.t
-  val zrangebyscore : ?limit:(int * int) option -> connection -> string -> int -> int -> (string * float) list IO.t
+  (* Elements in zset between start and stop *)
   val zrange : connection -> string -> int -> int -> (string * float) list IO.t
+
+  (* returns all the elements in zset at key with a value between min and max *)
+  val zrangebylex : ?limit:(int * int) option -> connection -> string -> string -> string -> string option list IO.t
+
+  (* returns all elements in zset at key with a score between min and max *)
+  val zrangebyscore : ?limit:(int * int) option -> connection -> string -> int -> int -> (string * float) list IO.t
+
+  (* the rank of member in the sorted set stored at key *)
   val zrank : connection -> string -> string -> int option IO.t
+
+  (* Removes the specified members from *)
   val zrem : connection -> string -> string list -> int IO.t
+
+  (* this command removes all elements in the sorted set stored at key between
+   * the lexicographical range specified by min and max
+   * *)
   val zremrangebylex : connection -> string -> string -> string -> int IO.t
+
+  (* Removes all elements in the sorted set stored at key with rank between
+   * start and stop
+   * *)
   val zremrangebyrank : connection -> string -> int -> int -> int IO.t
+
+  (* Removes all elements in the sorted set stored at key with a score between
+   * min and max (inclusive)
+   * *)
   val zremrangebyscore : connection -> string -> float -> float -> int IO.t
+
+  (* Returns the specified range of elements in the sorted set stored at key *)
   val zrevrange : connection -> string -> int -> int -> (string * float) list IO.t
+
+  (* Returns all the elements in the sorted set at key with a score between max
+   * and min (including elements with score equal to max or min)
+   * *)
   val zrevrangebyscore : connection -> string -> int -> int -> (string * float) list IO.t
+
+  (* Returns the rank of member in the sorted set stored at key, with the scores
+   * ordered from high to low
+   * *)
+  val zrevrank : connection -> string -> string -> int option IO.t
+
+  (* Returns the score of member in the sorted set at key *)
   val zscore : connection -> string -> string -> float option IO.t
+
+  (* 
+   * Computes the union of numkeys sorted sets given by the specified keys, and
+   * stores the result in dest
+   *)
   val zunionstore : connection -> ?weights:int list option -> ?agg_method:agg_method -> string -> string list -> int IO.t
 
-  (* Hyperloglog commands *)
+  (** Hyperloglog commands **)
+  (* Adds the specified elements to the specified HyperLogLog *)
   val pfadd : connection -> string -> string list -> int IO.t
+
+  (*
+   * Return the approximated cardinality of the set(s) observed by the
+   * HyperLogLog at key(s).
+   * *)
   val pfcount : connection -> string list -> int IO.t
+
+  (* Merge N different HyperLogLogs into a single one *)
   val pfmerge : connection -> string -> string list -> unit IO.t
 
 end

@@ -927,8 +927,8 @@ module Make(IO : Make.IO) = struct
   let zrank connection key member =
     let command = ["ZRANK"; key; member] in
     send_request connection command >>= function
-        | `Bulk b -> IO.return None
         | `Int n -> IO.return (Some(n))
+        | _ -> IO.return None
 
   let zrem connection key members =
     let command = List.concat [["ZREM"; key]; members] in
@@ -971,15 +971,17 @@ module Make(IO : Make.IO) = struct
   let zrevrank connection key member =
     let command = ["ZREVRANK"; key; member] in
     send_request connection command >>= function
-        | `Bulk b -> IO.return None
         | `Int n -> IO.return (Some(n))
+        | _ -> IO.return None
 
   let zscore connection key member =
     let command = ["ZSCORE"; key; member] in
     send_request connection command >>= function
         | `Bulk (Some b) ->
-            try IO.return (Some (float_of_string b))
-            with Failure(msg) -> IO.return None
+                begin
+                    try IO.return (Some (float_of_string b))
+                    with Failure(_) -> IO.return None
+                end
         | _ -> IO.return None
 
   let zunionstore = zstore_cmd "ZUNIONSTORE"
