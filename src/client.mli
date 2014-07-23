@@ -315,8 +315,6 @@ module Make(IO : Make.IO) : sig
 
   (** Sorted Set Commands **)
 
-  (* How we aggregate common values in case of zunionstore and zinterstore *)
-  type agg_method = Sum | Min | Max
   (* Add value to a zset *)
   val zadd : connection -> string -> string -> int -> int IO.t
 
@@ -330,20 +328,39 @@ module Make(IO : Make.IO) : sig
   val zincrby : connection -> string -> string -> int -> string option IO.t
 
   (* Store intersection of multiple zsets *)
-  val zinterstore : connection -> ?weights:int list option -> ?agg_method:agg_method -> string -> string list -> int IO.t
+  val zinterstore :
+      connection ->
+      ?weights:int list option ->
+      ?agg_method:[< `Sum | `Min | `Max > `Sum ] ->
+      string ->
+      string list ->
+      int IO.t
 
   (* returns the number of elements in the sorted set at key with a value
    * between min and max
    * *)
   val zlexcount : connection -> string -> string -> string -> int IO.t
+
   (* Elements in zset between start and stop *)
   val zrange : connection -> string -> int -> int -> (string * float) list IO.t
 
   (* returns all the elements in zset at key with a value between min and max *)
-  val zrangebylex : ?limit:(int * int) option -> connection -> string -> string -> string -> string option list IO.t
+  val zrangebylex :
+      connection ->
+      ?limit:(int * int) option ->
+      string ->
+      string ->
+      string ->
+      string option list IO.t
 
   (* returns all elements in zset at key with a score between min and max *)
-  val zrangebyscore : ?limit:(int * int) option -> connection -> string -> int -> int -> (string * float) list IO.t
+  val zrangebyscore :
+      connection ->
+      ?limit:(int * int) option ->
+      string ->
+      int ->
+      int ->
+      (string * float) list IO.t
 
   (* the rank of member in the sorted set stored at key *)
   val zrank : connection -> string -> string -> int option IO.t
@@ -386,7 +403,12 @@ module Make(IO : Make.IO) : sig
    * Computes the union of numkeys sorted sets given by the specified keys, and
    * stores the result in dest
    *)
-  val zunionstore : connection -> ?weights:int list option -> ?agg_method:agg_method -> string -> string list -> int IO.t
+  val zunionstore : connection ->
+                    ?weights:int list option ->
+                    ?agg_method:[< `Sum | `Min | `Max > `Sum ] ->
+                    string ->
+                    string list ->
+                    int IO.t
 
   (** Hyperloglog commands **)
   (* Adds the specified elements to the specified HyperLogLog *)

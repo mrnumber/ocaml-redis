@@ -450,7 +450,6 @@ module Make(IO : Make.IO) = struct
     let command = [ "APPEND"; key; value ] in
     send_request connection command >>= return_int
 
-
   let decr connection key =
     let command = [ "DECR"; key ] in
     send_request connection command >>= return_int
@@ -873,21 +872,20 @@ module Make(IO : Make.IO) = struct
     let command = ["ZINCRBY"; key; string_of_int score; value] in
     send_request connection command >>= return_bulk
 
-  type agg_method = Sum | Min | Max
   let z_store_agg = function
-      | Sum -> "SUM"
-      | Min -> "MIN"
-      | Max -> "MAX"
+      | `Sum -> "SUM"
+      | `Min -> "MIN"
+      | `Max -> "MAX"
 
-  let zstore_cmd cmd connection ?(weights=None) ?(agg_method=Sum) dest keys =
+  let zstore_cmd cmd connection ?(weights=None) ?(agg_method=`Sum) dest keys =
     let num_keys = string_of_int (List.length keys) in
     let base = cmd::dest::num_keys::keys in
     let agg = ["AGGREGATE"; z_store_agg agg_method] in
     let command = match weights with
-    | None -> List.concat [base; agg]
-    | Some wts ->
-            let w = "WEIGHTS"::(List.map string_of_int wts) in
-            List.concat [base; w; agg]
+      | None -> List.concat [base; agg]
+      | Some wts ->
+          let w = "WEIGHTS"::(List.map string_of_int wts) in
+          List.concat [base; w; agg]
     in
     send_request connection command >>= return_int
 
@@ -906,7 +904,7 @@ module Make(IO : Make.IO) = struct
     in
     send_request connection command >>= (return_key_value_multibulk float_of_string)
 
-  let zrangebylex ?(limit=None) connection key min max =
+  let zrangebylex connection ?(limit=None) key min max =
       let command = match limit with
         | None -> ["ZRANGEBYLEX"; key; min; max]
         | Some (offset, count) ->
@@ -914,7 +912,7 @@ module Make(IO : Make.IO) = struct
       in
       send_request connection command >>= return_bulk_multibulk
 
-  let zrangebyscore ?(limit=None) connection key min max =
+  let zrangebyscore connection ?(limit=None) key min max =
     let command = match limit with
     | None -> [ "ZRANGEBYSCORE"; key; string_of_int min; string_of_int max]
     | Some (offset, count) ->
