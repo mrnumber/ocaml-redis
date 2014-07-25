@@ -156,6 +156,8 @@ module Make(IO : Make.IO) = struct
     in
     loop [] list
 
+  let return_none () = IO.return None
+
   let return_bulk = function
     | `Bulk b -> IO.return b
     | x       -> IO.fail (Unexpected x)
@@ -211,18 +213,18 @@ module Make(IO : Make.IO) = struct
     return_bulk_multibulk reply >>= fun list ->
     IO.return (List.filter_map identity list)
 
-  let return_key_value_multibulk reply =
+  let return_key_value_multibulk f reply =
     return_bulk_multibulk reply >>= fun list ->
       try
         IO.return (List.filter_map (function
-          | (Some k, Some v) -> Some (k, v)
+          | (Some k, Some v) -> Some (k, f v)
           | _ -> None
         ) (deinterleave list))
       with e -> IO.fail e
 
   let return_opt_pair_multibulk reply =
     return_bulk_multibulk reply >>= function
-      | []               -> IO.return None
+      | []               -> return_none ()
       | [Some x; Some y] -> IO.return (Some (x, y))
       | x                -> IO.fail (Invalid_argument "Expected nil or two-element multi-bulk")
 
@@ -233,6 +235,7 @@ module Make(IO : Make.IO) = struct
           let fields = List.filter (fun x -> x <> "") fields in
           IO.return (List.map (fun f -> String.split f ":") fields)
       | None   -> IO.return []
+
 
   (* generate command for SORT *)
   let sort_command
@@ -428,7 +431,7 @@ module Make(IO : Make.IO) = struct
     let command = [ "TTL"; key ] in
     send_request connection command >>= return_int
       >>= function
-        | -1 -> IO.return None
+        | -1 -> return_none ()
         | t  -> IO.return (Some t)
 
   (* TYPE is a reserved word in ocaml *)
@@ -553,7 +556,7 @@ module Make(IO : Make.IO) = struct
 
   let hgetall connection key =
     let command = [ "HGETALL"; key ] in
-    send_request connection command >>= return_key_value_multibulk
+    send_request connection command >>= (return_key_value_multibulk (fun x -> x))
 
   (* Raises error if field already contains a non-numeric value. *)
   let hincrby connection key field increment =
@@ -610,7 +613,7 @@ module Make(IO : Make.IO) = struct
     let timeout = string_of_int timeout in
     let command = [ "BRPOPLPUSH"; source; destination; timeout ] in
     send_request connection command >>= function
-      | `Multibulk []        -> IO.return None
+      | `Multibulk []        -> return_none ()
       | `Bulk (Some element) -> IO.return (Some element)
       | x                    -> IO.fail (Unexpected x)
 
@@ -630,7 +633,7 @@ module Make(IO : Make.IO) = struct
       let command = [ "LINSERT"; key; where; pivot; value ] in
       send_request connection command >>= return_int
         >>= function
-          | -1 -> IO.return None
+          | -1 -> return_none ()
           | n  -> IO.return (Some n)
 
   let llen connection key =
@@ -854,4 +857,146 @@ module Make(IO : Make.IO) = struct
       (function
         | End_of_file -> IO.return ()
         | e           -> IO.fail e)
+
+  (* Sorted Set Commands *)
+  let zadd connection key value score =
+    let command = ["ZADD"; key; string_of_int score; value] in
+    send_request connection command >>= return_int
+
+  let zcard connection key =
+    let command = ["ZCARD"; key] in
+    send_request connection command >>= return_int
+
+  let zcount connection key min max =
+    let command = ["ZCOUNT"; key; string_of_int min; string_of_int max] in
+    send_request connection command >>= return_int
+
+  let zincrby connection key value score =
+    let command = ["ZINCRBY"; key; string_of_int score; value] in
+    send_request connection command >>= return_bulk
+
+  let z_store_agg = function
+      | `Sum -> "SUM"
+      | `Min -> "MIN"
+      | `Max -> "MAX"
+
+  let zstore_cmd cmd connection ?(weights=None) ?(agg_method=`Sum) dest keys =
+    let num_keys = string_of_int (List.length keys) in
+    let base = cmd :: dest :: num_keys :: keys in
+    let agg = ["AGGREGATE"; z_store_agg agg_method] in
+    let command = match weights with
+      | None -> List.concat [base; agg]
+      | Some wts ->
+          let w = "WEIGHTS" :: (List.map string_of_int wts) in
+          List.concat [base; w; agg]
+    in
+    send_request connection command >>= return_int
+
+  let zinterstore = zstore_cmd "ZINTERSTORE"
+
+  let zlexcount connection key min max =
+    let command = ["ZLEXCOUNT"; key; min; max] in
+    send_request connection command >>= return_int
+
+  let zrange connection key start stop =
+    let command = ["ZRANGE";
+        key;
+        string_of_int start;
+        string_of_int stop;
+        "WITHSCORES"]
+    in
+    send_request connection command >>= (return_key_value_multibulk float_of_string)
+
+  let zrangebylex connection ?(limit=None) key min max =
+      let command = match limit with
+        | None -> ["ZRANGEBYLEX"; key; min; max]
+        | Some (offset, count) ->
+            ["ZRANGEBYLEX"; key; min; max; "LIMIT"; string_of_int offset; string_of_int count];
+      in
+      send_request connection command >>= return_bulk_multibulk
+
+  let zrangebyscore connection ?(limit=None) key min max =
+    let command = match limit with
+    | None -> [ "ZRANGEBYSCORE"; key; string_of_int min; string_of_int max]
+    | Some (offset, count) ->
+            [ "ZRANGEBYSCORE"; key; string_of_int min; string_of_int max;
+             "WITHSCORES";
+            "LIMIT"; string_of_int offset; string_of_int count]
+    in
+    send_request connection command >>= (return_key_value_multibulk float_of_string)
+
+  let zrank connection key member =
+    let command = ["ZRANK"; key; member] in
+    send_request connection command >>= function
+        | `Int n -> IO.return (Some(n))
+        | _ -> return_none ()
+
+  let zrem connection key members =
+    let command = List.concat [["ZREM"; key]; members] in
+    send_request connection command >>= return_int
+
+  let zremrangebylex connection key min max =
+    let command = ["ZREMRANGEBYLEX"; key; min; max] in
+    send_request connection command >>= return_int
+
+  let zremrangebyrank connection key start stop =
+    let command = ["zremrangebyrank"; key;
+        string_of_int start; string_of_int stop] in
+    send_request connection command >>= return_int
+
+  let zremrangebyscore connection key min max =
+    let command =[
+        "ZREMRANGEBYSCORE";
+        key; string_of_float min; string_of_float max]
+    in
+    send_request connection command >>= return_int
+
+  let zrevrange connection key max min =
+    let command = ["ZREVRANGE";
+        key;
+        string_of_int max;
+        string_of_int min;
+        "WITHSCORES"
+    ] in
+    send_request connection command >>= (return_key_value_multibulk float_of_string)
+
+  let zrevrangebyscore connection key max min =
+    let command = ["ZREVRANGEBYSCORE";
+        key;
+        string_of_int max;
+        string_of_int min;
+        "WITHSCORES"
+    ] in
+    send_request connection command >>= (return_key_value_multibulk float_of_string)
+
+  let zrevrank connection key member =
+    let command = ["ZREVRANK"; key; member] in
+    send_request connection command >>= function
+        | `Int n -> IO.return (Some(n))
+        | _ -> return_none ()
+
+  let zscore connection key member =
+    let command = ["ZSCORE"; key; member] in
+    send_request connection command >>= function
+        | `Bulk (Some b) ->
+                begin
+                    try IO.return (Some (float_of_string b))
+                    with Failure(_) -> return_none ()
+                end
+        | _ -> return_none ()
+
+  let zunionstore = zstore_cmd "ZUNIONSTORE"
+
+  let pfadd connection key elements =
+    let command = List.concat [[ "PFADD"; key]; elements] in
+    send_request connection command >>= return_int
+
+  let pfcount connection keys =
+    let command = "PFCOUNT" :: keys in
+    send_request connection command >>= return_int
+
+  let pfmerge connection dest_key source_keys =
+    let command = "PFMERGE" :: dest_key :: source_keys in
+    send_request connection command >>= return_ok_status
+
 end
