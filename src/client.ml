@@ -156,6 +156,8 @@ module Make(IO : Make.IO) = struct
     in
     loop [] list
 
+  let return_none () = IO.return None
+
   let return_bulk = function
     | `Bulk b -> IO.return b
     | x       -> IO.fail (Unexpected x)
@@ -222,7 +224,7 @@ module Make(IO : Make.IO) = struct
 
   let return_opt_pair_multibulk reply =
     return_bulk_multibulk reply >>= function
-      | []               -> IO.return None
+      | []               -> return_none ()
       | [Some x; Some y] -> IO.return (Some (x, y))
       | x                -> IO.fail (Invalid_argument "Expected nil or two-element multi-bulk")
 
@@ -233,6 +235,7 @@ module Make(IO : Make.IO) = struct
           let fields = List.filter (fun x -> x <> "") fields in
           IO.return (List.map (fun f -> String.split f ":") fields)
       | None   -> IO.return []
+
 
   (* generate command for SORT *)
   let sort_command
@@ -428,7 +431,7 @@ module Make(IO : Make.IO) = struct
     let command = [ "TTL"; key ] in
     send_request connection command >>= return_int
       >>= function
-        | -1 -> IO.return None
+        | -1 -> return_none ()
         | t  -> IO.return (Some t)
 
   (* TYPE is a reserved word in ocaml *)
@@ -610,7 +613,7 @@ module Make(IO : Make.IO) = struct
     let timeout = string_of_int timeout in
     let command = [ "BRPOPLPUSH"; source; destination; timeout ] in
     send_request connection command >>= function
-      | `Multibulk []        -> IO.return None
+      | `Multibulk []        -> return_none ()
       | `Bulk (Some element) -> IO.return (Some element)
       | x                    -> IO.fail (Unexpected x)
 
@@ -630,7 +633,7 @@ module Make(IO : Make.IO) = struct
       let command = [ "LINSERT"; key; where; pivot; value ] in
       send_request connection command >>= return_int
         >>= function
-          | -1 -> IO.return None
+          | -1 -> return_none ()
           | n  -> IO.return (Some n)
 
   let llen connection key =
@@ -879,12 +882,12 @@ module Make(IO : Make.IO) = struct
 
   let zstore_cmd cmd connection ?(weights=None) ?(agg_method=`Sum) dest keys =
     let num_keys = string_of_int (List.length keys) in
-    let base = cmd::dest::num_keys::keys in
+    let base = cmd :: dest :: num_keys :: keys in
     let agg = ["AGGREGATE"; z_store_agg agg_method] in
     let command = match weights with
       | None -> List.concat [base; agg]
       | Some wts ->
-          let w = "WEIGHTS"::(List.map string_of_int wts) in
+          let w = "WEIGHTS" :: (List.map string_of_int wts) in
           List.concat [base; w; agg]
     in
     send_request connection command >>= return_int
@@ -926,7 +929,7 @@ module Make(IO : Make.IO) = struct
     let command = ["ZRANK"; key; member] in
     send_request connection command >>= function
         | `Int n -> IO.return (Some(n))
-        | _ -> IO.return None
+        | _ -> return_none ()
 
   let zrem connection key members =
     let command = List.concat [["ZREM"; key]; members] in
@@ -970,7 +973,7 @@ module Make(IO : Make.IO) = struct
     let command = ["ZREVRANK"; key; member] in
     send_request connection command >>= function
         | `Int n -> IO.return (Some(n))
-        | _ -> IO.return None
+        | _ -> return_none ()
 
   let zscore connection key member =
     let command = ["ZSCORE"; key; member] in
@@ -978,9 +981,9 @@ module Make(IO : Make.IO) = struct
         | `Bulk (Some b) ->
                 begin
                     try IO.return (Some (float_of_string b))
-                    with Failure(_) -> IO.return None
+                    with Failure(_) -> return_none ()
                 end
-        | _ -> IO.return None
+        | _ -> return_none ()
 
   let zunionstore = zstore_cmd "ZUNIONSTORE"
 
@@ -989,11 +992,11 @@ module Make(IO : Make.IO) = struct
     send_request connection command >>= return_int
 
   let pfcount connection keys =
-    let command = "PFCOUNT"::keys in
+    let command = "PFCOUNT" :: keys in
     send_request connection command >>= return_int
 
   let pfmerge connection dest_key source_keys =
-    let command = "PFMERGE"::dest_key::source_keys in
+    let command = "PFMERGE" :: dest_key :: source_keys in
     send_request connection command >>= return_ok_status
 
 end
