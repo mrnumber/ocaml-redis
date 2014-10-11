@@ -855,6 +855,11 @@ module Make(IO : Make.IO) = struct
     let command = [ "LASTSAVE" ] in
     send_request connection command >>= return_float
 
+  (* role in context of replication *)
+  let role connection =
+    let command = [ "ROLE" ] in
+    send_request connection command >>= return_multibulk
+
   (* synchronous save *)
   let save connection =
     let command = [ "SAVE" ] in

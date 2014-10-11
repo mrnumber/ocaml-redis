@@ -318,6 +318,9 @@ module Make(IO : Make.IO) : sig
   (* last successful save as Unix timestamp *)
   val lastsave : connection -> float IO.t
 
+  (* role in context of replication *)
+  val role : connection -> reply list IO.t
+
   (* synchronous save *)
   val save : connection -> unit IO.t
 
