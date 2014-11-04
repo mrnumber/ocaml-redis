@@ -6,6 +6,9 @@ module IO : sig
   type in_channel = Lwt_chan.in_channel
   type out_channel = Lwt_chan.out_channel
 
+  type zz = unit
+  type 'a stream = 'a Lwt_stream.t
+
   val (>>=) : 'a Lwt.t -> ('a -> 'b Lwt.t) -> 'b Lwt.t
   val catch : (unit -> 'a Lwt.t) -> (exn -> 'a Lwt.t) -> 'a Lwt.t
   val try_bind : (unit -> 'a Lwt.t) -> ('a -> 'b Lwt.t) -> (exn -> 'b Lwt.t) -> 'b Lwt.t
@@ -30,6 +33,9 @@ module IO : sig
   val map : ('a -> 'b Lwt.t) -> 'a list -> 'b list Lwt.t
   val map_serial : ('a -> 'b Lwt.t) -> 'a list -> 'b list Lwt.t
   val fold_left : ('a -> 'b -> 'a Lwt.t) -> 'a -> 'b list -> 'a Lwt.t
+
+  val stream_from : (zz -> 'b option t) -> 'b Lwt_stream.t
+  val stream_next: 'a Lwt_stream.t -> 'a Lwt.t
 end
 
 module Client : module type of Client.Make(IO)

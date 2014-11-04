@@ -8,12 +8,6 @@ open Batteries
 module Make(IO : Make.IO) = struct
   let (>>=) = IO.(>>=)
 
-  type connection = {
-    fd     : IO.file_descr;
-    in_ch  : IO.in_channel;
-    out_ch : IO.out_channel;
-  }
-
   (* reply from server *)
   type reply = [
     | `Status of string
@@ -23,6 +17,13 @@ module Make(IO : Make.IO) = struct
     | `Bulk of string option
     | `Multibulk of reply list
   ]
+
+  type connection = {
+    fd     : IO.file_descr;
+    in_ch  : IO.in_channel;
+    out_ch : IO.out_channel;
+    stream : reply list IO.stream;
+  }
 
   (* error responses from server *)
   exception Error of string
@@ -160,6 +161,10 @@ module Make(IO : Make.IO) = struct
     | `Bulk b -> IO.return b
     | x       -> IO.fail (Unexpected x)
 
+  let return_no_nil_bulk = function
+    | `Bulk (Some b) -> IO.return b
+    | x              -> IO.fail (Unexpected x)
+
   let return_bool = function
     | `Int 0 -> IO.return false
     | `Int 1 -> IO.return true
@@ -230,7 +235,7 @@ module Make(IO : Make.IO) = struct
     return_bulk reply >>= function
       | Some b ->
           let fields = String.nsplit b "\r\n" in
-          let fields = List.filter (fun x -> x <> "") fields in
+          let fields = List.filter (fun x -> x <> "" && not (String.starts_with x "#") ) fields in
           IO.return (List.map (fun f -> String.split f ":") fields)
       | None   -> IO.return []
 
@@ -282,10 +287,17 @@ module Make(IO : Make.IO) = struct
       Unix.ADDR_INET (inet_addr, spec.port)
     in
     IO.connect s sock_addr >>= fun () ->
+    let in_ch = IO.in_channel_of_descr s in
     IO.return
       { fd = s;
-        in_ch = IO.in_channel_of_descr s;
+        in_ch = in_ch;
         out_ch = IO.out_channel_of_descr s;
+        stream =
+          let f _ =
+            read_reply_exn in_ch >>= fun resp ->
+            return_multibulk resp >>= fun b ->
+            IO.return (Some b) in
+          IO.stream_from f;
       }
 
   let disconnect connection =
@@ -302,6 +314,8 @@ module Make(IO : Make.IO) = struct
     with e ->
       disconnect c >>= fun () ->
       IO.fail e
+
+  let stream connection = connection.stream
 
   (* Raises Error if password is invalid. *)
   let auth connection password =
@@ -785,6 +799,47 @@ module Make(IO : Make.IO) = struct
     let command = "PUBSUB" :: "NUMSUB":: channels in
     send_request connection command >>= return_multibulk
 
+  (* Subscribes the client to the specified channels. *)
+  let subscribe connection channels =
+    let command = "SUBSCRIBE" :: channels in
+    write connection.out_ch command >>= fun () -> IO.return ()
+
+  (* Unsubscribes the client from the given channels, or from all of them if an empty list is given *)
+  let unsubscribe connection channels =
+    let command = "UNSUBSCRIBE" :: channels in
+    write connection.out_ch command
+
+  (** Sorted Set commands *)
+
+  (* Add one or more members to a sorted set, or update its score if it already exists. *)
+  let zadd connection key values =
+    let f acc (s, v) = (string_of_int s) :: v :: acc in
+    let values = List.fold_left f [] values in
+    let command = "ZADD" :: key :: values in
+    send_request connection command >>= return_int
+
+  (* Return a range of members in a sorted set, by index. *)
+  let zrange connection ?(withscores=false) key start stop =
+    let istart = string_of_int start in
+    let istop = string_of_int stop in
+    let scores = if withscores then ["withscores"] else [] in
+    let command = "ZRANGE" :: key :: istart :: istop :: scores in
+    send_request connection command >>= return_multibulk
+
+  (* Return a range of members in a sorted set, by score. *)
+  let zrangebyscore connection ?(withscores=false) key min max =
+    let imin = string_of_int min in
+    let imax = string_of_int max in
+    let scores = if withscores then ["withscores"] else [] in
+    let command = "ZRANGEBYSCORE" :: key :: imin :: imax :: scores in
+    send_request connection command >>= return_multibulk
+
+
+  (* Remove one or more members from a sorted set. *)
+  let zrem connection members =
+    let command = "ZREM" :: members in
+    send_request connection command >>= return_int
+
   (** Transaction commands *)
 
   (* Marks the start of a transaction block. Subsequent commands will be queued for atomic execution using EXEC. *)
@@ -817,6 +872,28 @@ module Make(IO : Make.IO) = struct
       (function
         | Unexpected x -> return_queued_status x
         | e -> IO.fail e)
+
+  (** Scripting commands *)
+
+  (* Load the specified Lua script into the script cache. Returns the SHA1 digest of the script for use with EVALSHA. *)
+  let script_load connection script =
+    let command = [ "SCRIPT"; "LOAD"; script ] in
+    send_request connection command >>= return_no_nil_bulk
+
+  (* Evaluates a script using the built-in Lua interpreter. *)
+  let eval connection script keys args =
+    let nb_keys = string_of_int (List.length keys) in
+    let params = List.flatten [ keys; args ] in
+    let command = "EVAL" :: script :: nb_keys :: params in
+    send_request connection command
+
+
+  (* Evaluates a script cached on the server side by its SHA1 digest. *)
+  let evalsha connection sha keys args =
+    let nb_keys = string_of_int (List.length keys) in
+    let params = List.flatten [ keys; args ] in
+    let command = "EVALSHA" :: sha :: nb_keys :: params in
+    send_request connection command
 
   (** Server *)
 

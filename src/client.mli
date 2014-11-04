@@ -5,11 +5,6 @@
 
 (* Make communication module *)
 module Make(IO : Make.IO) : sig
-  type connection = private {
-    fd     : IO.file_descr;
-    in_ch  : IO.in_channel;
-    out_ch : IO.out_channel;
-  }
 
   (* reply from server *)
   type reply = [
@@ -20,6 +15,13 @@ module Make(IO : Make.IO) : sig
     | `Bulk of string option
     | `Multibulk of reply list
   ]
+
+  type connection = private {
+    fd     : IO.file_descr;
+    in_ch  : IO.in_channel;
+    out_ch : IO.out_channel;
+    stream : reply list IO.stream;
+  }
 
   (* error responses from server *)
   exception Error of string
@@ -37,6 +39,7 @@ module Make(IO : Make.IO) : sig
   val connect : connection_spec -> connection IO.t
   val disconnect : connection -> unit IO.t
   val with_connection : connection_spec -> (connection -> 'a IO.t) -> 'a IO.t
+  val stream : connection -> reply list IO.stream
 
   (* Raises Error if password is invalid. *)
   val auth : connection -> string -> unit IO.t
@@ -278,6 +281,26 @@ module Make(IO : Make.IO) : sig
   (* Returns the number of subscribers (not counting clients subscribed to patterns) for the specified channels. *)
   val pubsub_numsub : connection -> string list -> reply list IO.t
 
+  (* Subscribes the client to the specified channels. *)
+  val subscribe : connection -> string list -> unit IO.t
+
+  (* Unsubscribes the client from the given channels, or from all of them if an empty list is given *)
+  val unsubscribe : connection -> string list -> unit IO.t
+
+  (** Sorted Set commands *)
+
+  (* Add one or more members to a sorted set, or update its score if it already exists. *)
+  val zadd : connection -> string -> (int * string) list -> int IO.t
+
+  (* Return a range of members in a sorted set, by index. *)
+  val zrange : connection -> ?withscores:bool -> string -> int -> int -> reply list IO.t
+
+  (* Return a range of members in a sorted set, by score. *)
+  val zrangebyscore : connection -> ?withscores:bool -> string -> int -> int -> reply list IO.t
+
+  (* Remove one or more members from a sorted set. *)
+  val zrem : connection -> string list -> int IO.t
+
   (** Transaction commands *)
 
   (* Marks the start of a transaction block. Subsequent commands will be queued for atomic execution using EXEC. *)
@@ -296,6 +319,17 @@ module Make(IO : Make.IO) : sig
   val unwatch : connection -> unit IO.t
 
   val queue : (unit -> 'a IO.t) -> unit IO.t
+
+  (** Scripting commands *)
+
+  (* Load the specified Lua script into the script cache. Returns the SHA1 digest of the script for use with EVALSHA. *)
+  val script_load : connection -> string -> string IO.t
+
+  (* Evaluates a script using the built-in Lua interpreter. *)
+  val eval : connection -> string -> string list -> string list -> reply IO.t
+
+  (* Evaluates a script cached on the server side by its SHA1 digest. *)
+  val evalsha : connection -> string -> string list -> string list -> reply IO.t
 
   (** Server *)
 

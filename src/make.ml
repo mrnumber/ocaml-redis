@@ -4,6 +4,9 @@ module type IO = sig
   type in_channel
   type out_channel
 
+  type zz
+  type 'a stream
+
   (* Lwt stuff *)
   val (>>=)         : 'a t -> ('a -> 'b t) -> 'b t
   val catch         : (unit -> 'a t) -> (exn -> 'a t) -> 'a t
@@ -32,4 +35,7 @@ module type IO = sig
   val map : ('a -> 'b t) -> 'a list -> 'b list t
   val map_serial : ('a -> 'b t) -> 'a list -> 'b list t
   val fold_left : ('a -> 'b -> 'a t) -> 'a -> 'b list -> 'a t
+
+  val stream_from : (zz -> 'b option t) -> 'b stream
+  val stream_next : 'a stream -> 'a t
 end
