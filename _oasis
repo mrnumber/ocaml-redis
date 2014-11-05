@@ -27,3 +27,15 @@ Library redis_lwt
   FindlibParent: redis
   Modules: Redis_lwt
   BuildDepends: lwt.unix, lwt, redis
+
+Flag examples
+  Description: build the examples
+  Default: false
+
+Executable redis_examples
+  Path: examples
+  MainIs: examples.ml
+  Build$: flag(examples)
+  Install: false
+  CompiledObject: best
+  BuildDepends: threads, core, redis, redis_lwt, lwt.unix, lwt
