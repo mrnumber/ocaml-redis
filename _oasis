@@ -39,3 +39,15 @@ Executable redis_examples
   Install: false
   CompiledObject: best
   BuildDepends: threads, core, redis, redis_lwt, lwt.unix, lwt
+
+Executable test
+  Path:		test
+  BuildTools:	ocamlbuild
+  MainIs:	test.ml
+  BuildDepends:	lwt, lwt.unix, oUnit, redis
+  Install:	false
+  Build$:	flag(tests)
+
+Test main
+  Run$:		flag(tests)
+  Command:	$test
