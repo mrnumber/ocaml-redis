@@ -3,7 +3,7 @@ Name:        redis
 Version:     0.2
 Synopsis:    Ocaml bindings for Redis
 Authors:     Mike Wells
-License:     BSD3
+License:     BSD-3-clause
 Plugins:     META (0.3), DevFiles (0.3)
 BuildTools:  ocamlbuild
 
@@ -16,7 +16,7 @@ Library redis
   BuildDepends: batteries, uuidm
 
 Flag lwt
-  Description: build the Lwt client
+  Description: Build the Lwt client
   Default: false
 
 Library redis_lwt
@@ -29,7 +29,7 @@ Library redis_lwt
   BuildDepends: lwt.unix, lwt, redis
 
 Flag examples
-  Description: build the examples
+  Description: Build the examples
   Default: false
 
 Executable redis_examples
