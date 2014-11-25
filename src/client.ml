@@ -354,10 +354,16 @@ module Make(IO : Make.IO) = struct
     let command = [ "EXISTS"; key ] in
     send_request connection command >>= return_bool
 
-  (* Returns true if timeout was set, false otherwise. *)
+  (* Returns true if timeout (in seconds) was set, false otherwise. *)
   let expire connection key seconds =
     let seconds = string_of_int seconds in
     let command = [ "EXPIRE"; key; seconds ] in
+    send_request connection command >>= return_bool
+
+  (* Returns true if timeout (in milliseconds) was set, false otherwise. *)
+  let pexpire connection key milliseconds =
+    let milliseconds = string_of_int milliseconds in
+    let command = [ "PEXPIRE"; key; milliseconds ] in
     send_request connection command >>= return_bool
 
   (* Like "expire" but with absolute (Unix) time; the time is truncated to the nearest second. *)

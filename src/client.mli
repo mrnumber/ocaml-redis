@@ -58,8 +58,11 @@ module Make(IO : Make.IO) : sig
 
   val exists : connection -> string -> bool IO.t
 
-  (* Returns the number of keys removed. *)
+  (* Returns true if timeout (in seconds) was set, false otherwise. *)
   val expire : connection -> string -> int -> bool IO.t
+
+  (* Returns true if timeout (in milliseconds) was set, false otherwise. *)
+  val pexpire : connection -> string -> int -> bool IO.t
 
   (* Like "expire" but with absolute (Unix) time; the time is truncated to the nearest second. *)
   val expireat : connection -> string -> float -> bool IO.t
