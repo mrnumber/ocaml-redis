@@ -443,9 +443,19 @@ module Make(IO : Make.IO) = struct
     in
     send_request connection command >>= return_int
 
-  (* Returns None if key doesn't exist or doesn't have a timeout. *)
+  (* Returns None if key doesn't exist or doesn't have a timeout.
+     Otherwise function returns Some seconds. *)
   let ttl connection key =
     let command = [ "TTL"; key ] in
+    send_request connection command >>= return_int
+      >>= function
+        | -1 -> IO.return None
+        | t  -> IO.return (Some t)
+
+  (* Returns None if key doesn't exist or doesn't have a timeout.
+     Otherwise function returns Some milliseconds. *)
+  let pttl connection key =
+    let command = [ "PTTL"; key ] in
     send_request connection command >>= return_int
       >>= function
         | -1 -> IO.return None

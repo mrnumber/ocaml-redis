@@ -103,6 +103,9 @@ module Make(IO : Make.IO) : sig
   (* Returns None if key doesn't exist or doesn't have a timeout. *)
   val ttl : connection -> string -> int option IO.t
 
+  (* Returns None if key doesn't exist or doesn't have a timeout. *)
+  val pttl : connection -> string -> int option IO.t
+
   (* TYPE is a reserved word in ocaml *)
   val type_of : connection -> string -> [> `Hash | `List | `None | `String | `Zset ] IO.t
 
