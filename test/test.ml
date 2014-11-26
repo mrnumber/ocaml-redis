@@ -49,18 +49,61 @@ let test_case_keys conn =
   let value = redis_string_bucket() in
   assert_bool "Can't set key" (R.set conn key value = ()) ;
   assert_bool "Key and value mismatch" (R.get conn key = Some value);
-  assert_bool "Key doesn't exist" (R.exists conn key = true);
+  assert_bool "Key doesn't exist" (R.exists conn key);
   assert_bool "Can't find with itself as a pattern in KEYS command" (R.keys conn key = [key]);
   assert_bool "Can't find key with RANDOMKEY command" (R.randomkey conn = Some key);
-  assert_bool "Can't move key to redis database #2" (R.move conn key 2 = true);
+  assert_bool "Can't move key to redis database #2" (R.move conn key 2);
   assert_bool "Can't select redis database #2" (R.select conn 2 = ());
-  assert_bool "Can't set expiration timeout for key" (R.expire conn key 1 = true);
-  assert_bool "Can't set expiration timeout in milliseconds for key" (R.pexpire conn key 1000 = true);
+  let key' = redis_string_bucket() in
+  assert_bool "Can't rename key" (R.rename conn key key' = ());
+  let key'' = redis_string_bucket() in
+  assert_bool "Can't set key''" (R.set conn key'' value = ());
+  assert_bool "Can renamenx key" (R.renamenx conn key' key'' = false);
+  assert_bool "Can't rename key" (R.rename conn key' key = ());
+  assert_bool "Key wasn't deleted" (R.del conn [key; key''] = 2);
+  assert_bool "Can't select redis database #0" (R.select conn 0 = ())
+
+let test_case_dump_restore conn =
+  let module R = Redis_sync.Client in
+  let key = redis_string_bucket() in
+  let value = redis_string_bucket() in
+  assert_bool "Can't set key" (R.set conn key value = ());
+  match (R.dump conn key) with
+  | None -> assert_failure "Can't dump value"
+  | Some value_dump ->
+     let key' = String.concat "" [key; redis_string_bucket()] in
+     assert_bool "Can't restore value" (R.restore conn key' 0 value_dump = ());
+     assert_bool "Key and restored value mismatch" (R.get conn key' = Some value)
+
+let test_case_expire conn =
+  let module R = Redis_sync.Client in
+  let key = redis_string_bucket() in
+  let value = redis_string_bucket() in
+  assert_bool "Can't set key" (R.set conn key value = ());
+  assert_bool "Can't set expiration timeout for key" (R.expire conn key 1);
+  assert_bool "Can't set expiration timeout in milliseconds for key" (R.pexpire conn key 1000);
   assert_bool "Can't check expiration timeout for key" (List.mem (R.ttl conn key) [Some 0; Some 1]);
   (match (R.pttl conn key) with
    | Some pttl -> assert_bool "Expiration timeout differs from setted" (0 <= pttl && pttl <= 1000);
    | None -> assert_failure "Can't check expiration timeout for key");
-  assert_bool "Key wasn't deleted" (R.del conn [key] = 1)
+  assert_bool "Can't remove existing timeout on key" (R.persist conn key);
+  assert_bool "Can't check expiration timeout for key" (R.ttl conn key = None)
+
+let test_case_expireat conn =
+  let module R = Redis_sync.Client in
+  let key = redis_string_bucket() in
+  let value = redis_string_bucket() in
+  assert_bool "Can't set key" (R.set conn key value = ());
+  let expiry = Unix.time () +. 1. in
+  assert_bool "Can't set expiration timeout for key" (R.expireat conn key expiry);
+  assert_bool "Can't check expiration timeout for key" (List.mem (R.ttl conn key) [Some 0; Some 1]);
+
+  let pexpiry = int_of_float (Unix.time ()) * 1000 + 1000 in
+  assert_bool "Can't set expiration timeout for key (in ms)" (R.pexpireat conn key pexpiry);
+  match (R.pttl conn key) with
+  | Some pttl -> assert_bool "Expiration timeout differs from setted" (0 <= pttl && pttl <= 1000)
+  | None -> assert_failure "Can't check expiration timeout for key"
+
 
 let bracket test_case () =
   let conn = setup () in
@@ -72,6 +115,8 @@ let _ =
     "test_case_ping" >:: (bracket test_case_ping);
     "test_case_echo" >:: (bracket test_case_echo);
     "test_case_keys" >:: (bracket test_case_keys);
+    "test_case_dump_restore" >:: (bracket test_case_dump_restore);
+    "test_case_expire" >:: (bracket test_case_expire);
   ] in
   Random.self_init () ;
   run_test_tt_main suite
