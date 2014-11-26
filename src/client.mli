@@ -67,6 +67,9 @@ module Make(IO : Make.IO) : sig
   (* Like "expire" but with absolute (Unix) time; the time is truncated to the nearest second. *)
   val expireat : connection -> string -> float -> bool IO.t
 
+  (* Like "pexpire" but with absolute (Unix) time in milliseconds. *)
+  val pexpireat : connection -> string -> int -> bool IO.t
+
   (* Probably not a good idea to use this in production; see Redis documentation. *)
   val keys : connection -> string -> string list IO.t
 

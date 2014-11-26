@@ -372,6 +372,12 @@ module Make(IO : Make.IO) = struct
     let command = [ "EXPIREAT"; key; unix_time ] in
     send_request connection command >>= return_bool
 
+  (* Like "pexpire" but with absolute (Unix) time in milliseconds. *)
+  let pexpireat connection key unix_time_ms =
+    let unix_time_ms = Printf.sprintf "%d" unix_time_ms in
+    let command = [ "PEXPIREAT"; key; unix_time_ms ] in
+    send_request connection command >>= return_bool
+
   (* Probably not a good idea to use this in production; see Redis documentation. *)
   let keys connection pattern =
     let command = [ "KEYS"; pattern ] in
