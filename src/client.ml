@@ -473,6 +473,15 @@ module Make(IO : Make.IO) = struct
       | `Status x        -> IO.fail (Unrecognized ("Unexpected TYPE result", x))
       | x                -> IO.fail (Unexpected x)
 
+  let dump connection key =
+    let command = ["DUMP"; key] in
+    send_request connection command >>= return_bulk
+
+  let restore connection key ttl serialized_value =
+    let ttl = string_of_int ttl in
+    let command = ["RESTORE"; key; ttl; serialized_value] in
+    send_request connection command >>= return_ok_status
+
   (** String commands *)
 
   (* Returns length of string after append. *)

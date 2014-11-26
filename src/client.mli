@@ -109,6 +109,12 @@ module Make(IO : Make.IO) : sig
   (* TYPE is a reserved word in ocaml *)
   val type_of : connection -> string -> [> `Hash | `List | `None | `String | `Zset ] IO.t
 
+  (* Serialize value stored at key in a Redis-specific format *)
+  val dump: connection -> string -> string option IO.t
+
+  (* Create a key with serialized value (obtained via DUMP) *)
+  val restore: connection -> string -> int -> string -> unit IO.t
+
   (** String commands *)
 
   (* Returns length of string after append. *)
