@@ -42,15 +42,25 @@ let test_case_echo conn =
     | Some "ECHO" -> ()
     | _ -> assert_failure("Can't echo to Redis server")
 
-(* SET *)
-(* GET *)
-let test_case_set_string conn =
+(* Keys test case *)
+let test_case_keys conn =
+  let module R = Redis_sync.Client in
   let key = redis_string_bucket() in
   let value = redis_string_bucket() in
-  let err = Redis_sync.Client.set conn key value in
-  let result = Redis_sync.Client.get conn key in
-  assert_bool "Can't set key" (err = ()) ;
-  assert_bool "Key and value mismatch" (result = Some value)
+  assert_bool "Can't set key" (R.set conn key value = ()) ;
+  assert_bool "Key and value mismatch" (R.get conn key = Some value);
+  assert_bool "Key doesn't exist" (R.exists conn key = true);
+  assert_bool "Can't find with itself as a pattern in KEYS command" (R.keys conn key = [key]);
+  assert_bool "Can't find key with RANDOMKEY command" (R.randomkey conn = Some key);
+  assert_bool "Can't move key to redis database #2" (R.move conn key 2 = true);
+  assert_bool "Can't select redis database #2" (R.select conn 2 = ());
+  assert_bool "Can't set expiration timeout for key" (R.expire conn key 1 = true);
+  assert_bool "Can't set expiration timeout in milliseconds for key" (R.pexpire conn key 1000 = true);
+  assert_bool "Can't check expiration timeout for key" (List.mem (R.ttl conn key) [Some 0; Some 1]);
+  (match (R.pttl conn key) with
+   | Some pttl -> assert_bool "Expiration timeout differs from setted" (0 <= pttl && pttl <= 1000);
+   | None -> assert_failure "Can't check expiration timeout for key");
+  assert_bool "Key wasn't deleted" (R.del conn [key] = 1)
 
 let bracket test_case () =
   let conn = setup () in
@@ -61,7 +71,7 @@ let _ =
   let suite = "Redis" >::: [
     "test_case_ping" >:: (bracket test_case_ping);
     "test_case_echo" >:: (bracket test_case_echo);
-    "test_case_set_string" >:: (bracket test_case_set_string);
+    "test_case_keys" >:: (bracket test_case_keys);
   ] in
   Random.self_init () ;
   run_test_tt_main suite
