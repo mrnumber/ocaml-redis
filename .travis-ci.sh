@@ -27,6 +27,7 @@ opam --git-version
 opam init git://github.com/ocaml/opam-repository >/dev/null 2>&1
 opam install ${OPAM_DEPENDS}
 eval `opam config env`
+sudo service redis-server start
 ocaml setup.ml -configure --enable-tests
 ocaml setup.ml -build
 ocaml setup.ml -test
