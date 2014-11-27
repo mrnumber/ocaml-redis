@@ -372,6 +372,12 @@ module Make(IO : Make.IO) = struct
     let command = [ "EXPIREAT"; key; unix_time ] in
     send_request connection command >>= return_bool
 
+  (* Like "pexpire" but with absolute (Unix) time in milliseconds. *)
+  let pexpireat connection key unix_time_ms =
+    let unix_time_ms = Printf.sprintf "%d" unix_time_ms in
+    let command = [ "PEXPIREAT"; key; unix_time_ms ] in
+    send_request connection command >>= return_bool
+
   (* Probably not a good idea to use this in production; see Redis documentation. *)
   let keys connection pattern =
     let command = [ "KEYS"; pattern ] in
@@ -472,6 +478,15 @@ module Make(IO : Make.IO) = struct
       | `Status "none"   -> IO.return `None (* key doesn't exist *)
       | `Status x        -> IO.fail (Unrecognized ("Unexpected TYPE result", x))
       | x                -> IO.fail (Unexpected x)
+
+  let dump connection key =
+    let command = ["DUMP"; key] in
+    send_request connection command >>= return_bulk
+
+  let restore connection key ttl serialized_value =
+    let ttl = string_of_int ttl in
+    let command = ["RESTORE"; key; ttl; serialized_value] in
+    send_request connection command >>= return_ok_status
 
   (** String commands *)
 

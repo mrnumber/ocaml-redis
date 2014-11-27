@@ -67,6 +67,9 @@ module Make(IO : Make.IO) : sig
   (* Like "expire" but with absolute (Unix) time; the time is truncated to the nearest second. *)
   val expireat : connection -> string -> float -> bool IO.t
 
+  (* Like "pexpire" but with absolute (Unix) time in milliseconds. *)
+  val pexpireat : connection -> string -> int -> bool IO.t
+
   (* Probably not a good idea to use this in production; see Redis documentation. *)
   val keys : connection -> string -> string list IO.t
 
@@ -108,6 +111,12 @@ module Make(IO : Make.IO) : sig
 
   (* TYPE is a reserved word in ocaml *)
   val type_of : connection -> string -> [> `Hash | `List | `None | `String | `Zset ] IO.t
+
+  (* Serialize value stored at key in a Redis-specific format *)
+  val dump: connection -> string -> string option IO.t
+
+  (* Create a key with serialized value (obtained via DUMP) *)
+  val restore: connection -> string -> int -> string -> unit IO.t
 
   (** String commands *)
 
