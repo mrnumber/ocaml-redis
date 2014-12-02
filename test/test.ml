@@ -51,7 +51,7 @@ let test_case_keys conn =
   assert_bool "Key and value mismatch" (R.get conn key = Some value);
   assert_bool "Key doesn't exist" (R.exists conn key);
   assert_bool "Can't find with itself as a pattern in KEYS command" (R.keys conn key = [key]);
-  assert_bool "Can't find key with RANDOMKEY command" (R.randomkey conn = Some key);
+  assert_bool "Can't find key with RANDOMKEY command" (R.randomkey conn <> None);
   assert_bool "Can't move key to redis database #2" (R.move conn key 2);
   assert_bool "Can't select redis database #2" (R.select conn 2 = ());
   let key' = redis_string_bucket() in
