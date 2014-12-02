@@ -47,7 +47,7 @@ let test_case_keys conn =
   let module R = Redis_sync.Client in
   let key = redis_string_bucket() in
   let value = redis_string_bucket() in
-  assert_bool "Can't set key" (R.set conn key value = ()) ;
+  assert_bool "Can't set key" (R.set conn key value = ());
   assert_bool "Key and value mismatch" (R.get conn key = Some value);
   assert_bool "Key doesn't exist" (R.exists conn key);
   assert_bool "Can't find with itself as a pattern in KEYS command" (R.keys conn key = [key]);
@@ -104,6 +104,19 @@ let test_case_expireat conn =
   | Some pttl -> assert_bool "Expiration timeout differs from setted" (0 <= pttl && pttl <= 1000)
   | None -> assert_failure "Can't check expiration timeout for key"
 
+let test_case_type conn =
+  let module R = Redis_sync.Client in
+  let value = redis_string_bucket() in
+
+  let string_key = redis_string_bucket() in
+  assert_bool "Can't set key" (R.set conn string_key value = ());
+
+  let list_key = redis_string_bucket() in
+  assert_bool "Can't push value to list" (R.lpush conn list_key value = 1);
+
+  assert_bool "Got wrong key type for string_key" (R.type_of conn string_key = `String);
+  assert_bool "Got wrong key type for list_key" (R.type_of conn list_key = `List)
+
 
 let bracket test_case () =
   let conn = setup () in
@@ -117,6 +130,7 @@ let _ =
     "test_case_keys" >:: (bracket test_case_keys);
     "test_case_dump_restore" >:: (bracket test_case_dump_restore);
     "test_case_expire" >:: (bracket test_case_expire);
+    "test_case_type" >:: (bracket test_case_type);
   ] in
   Random.self_init () ;
   run_test_tt_main suite
