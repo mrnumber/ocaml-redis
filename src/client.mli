@@ -142,6 +142,8 @@ module Make(IO : Make.IO) : sig
 
   val incrby : connection -> string -> int -> int IO.t
 
+  val incrbyfloat : connection -> string -> float -> float IO.t
+
   val mget : connection -> string list -> string option list IO.t
 
   (* This is atomic: either all keys are set or none are. *)

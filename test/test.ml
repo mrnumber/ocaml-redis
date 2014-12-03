@@ -14,10 +14,22 @@ let redis_test_port () =
   with Not_found ->
     6379
 
-let redis_string_bucket() =
+let redis_string_bucket () =
   let number = Random.bits () in
   let bucket = ("ounit_" ^ string_of_int(number)) in
-    bucket
+  bucket
+
+let redis_integer_bucket () =
+  let number = Random.bits () in
+  number
+
+let redis_float_bucket () =
+  (* Redis' float operations precision differs from OCaml's float operation precision.
+     Limit our floats to 11 digits after the decimal point to
+     have possibility to test float operations. *)
+  let a = float_of_int (Random.bits ()) in
+  let b = float_of_int (Random.bits ()) in
+  float_of_string (Printf.sprintf "%.8f" (a /. b))
 
 let redis_open_connection =
   let host = redis_test_host () in
@@ -34,24 +46,25 @@ let teardown conn =
 let test_case_ping conn =
   match Redis_sync.Client.ping conn with
     | true -> ()
-    | false -> assert_failure("Can't connect to Redis server")
+    | false -> assert_failure "Can't connect to Redis server"
 
 (* ECHO *)
 let test_case_echo conn =
   match Redis_sync.Client.echo conn "ECHO" with
     | Some "ECHO" -> ()
-    | _ -> assert_failure("Can't echo to Redis server")
+    | _ -> assert_failure "Can't echo to Redis server"
 
 (* Keys test case *)
 let test_case_keys conn =
   let module R = Redis_sync.Client in
   let key = redis_string_bucket() in
   let value = redis_string_bucket() in
-  assert_bool "Can't set key" (R.set conn key value = ()) ;
+  assert_bool "Can't set key" (R.set conn key value = ());
   assert_bool "Key and value mismatch" (R.get conn key = Some value);
   assert_bool "Key doesn't exist" (R.exists conn key);
-  assert_bool "Can't find with itself as a pattern in KEYS command" (R.keys conn key = [key]);
-  assert_bool "Can't find key with RANDOMKEY command" (R.randomkey conn = Some key);
+  assert_bool "Can't find with itself as a pattern in KEYS command"
+              (List.find (fun k -> k = key) (R.keys conn key) = key);
+  assert_bool "Can't find key with RANDOMKEY command" (R.randomkey conn <> None);
   assert_bool "Can't move key to redis database #2" (R.move conn key 2);
   assert_bool "Can't select redis database #2" (R.select conn 2 = ());
   let key' = redis_string_bucket() in
@@ -104,6 +117,44 @@ let test_case_expireat conn =
   | Some pttl -> assert_bool "Expiration timeout differs from setted" (0 <= pttl && pttl <= 1000)
   | None -> assert_failure "Can't check expiration timeout for key"
 
+let test_case_type conn =
+  let module R = Redis_sync.Client in
+  let value = redis_string_bucket() in
+
+  let string_key = redis_string_bucket() in
+  assert_bool "Can't set key" (R.set conn string_key value = ());
+
+  let list_key = redis_string_bucket() in
+  assert_bool "Can't push value to list" (R.lpush conn list_key value = 1);
+
+  assert_bool "Got wrong key type for string_key" (R.type_of conn string_key = `String);
+  assert_bool "Got wrong key type for list_key" (R.type_of conn list_key = `List)
+
+(* APPEND *)
+let test_case_append conn =
+  let module R = Redis_sync.Client in
+  let key = redis_string_bucket() in
+  let value = redis_string_bucket() in
+  assert_bool "Can't append initial value to key" (R.append conn key value = String.length value);
+  assert_bool "Can't append additional value to key"
+              (R.append conn key value = (String.length value + String.length value));
+  assert_bool "Can't get key" (R.get conn key = Some (String.concat "" [value; value]))
+
+(* INCR/DECR/INCRBY/DECRBY/INCRBYFLOAT *)
+let test_case_incr_decr conn =
+  let module R = Redis_sync.Client in
+  let key = redis_string_bucket() in
+  let value = redis_integer_bucket () in
+  let increment = redis_integer_bucket () in
+  assert_bool "Can't set float value to key" (R.set conn key (string_of_int value) = ());
+  assert_bool "Can't increment value by integer" (R.incrby conn key increment = value + increment);
+  assert_bool "Can't increment value by one" (R.incr conn key = value + increment + 1);
+  assert_bool "Can't decrement value by integer" (R.decrby conn key increment = value + 1);
+  assert_bool "Can't decrement value by one" (R.decr conn key = value);
+  assert_bool "Can't increment value by float"
+              (R.incrbyfloat conn key 2. = (float_of_int value) +. 2.);
+  assert_bool "Can't increment value by negative float"
+              (R.incrbyfloat conn key (- 2.) = (float_of_int value))
 
 let bracket test_case () =
   let conn = setup () in
@@ -117,6 +168,9 @@ let _ =
     "test_case_keys" >:: (bracket test_case_keys);
     "test_case_dump_restore" >:: (bracket test_case_dump_restore);
     "test_case_expire" >:: (bracket test_case_expire);
+    "test_case_type" >:: (bracket test_case_type);
+    "test_case_append" >:: (bracket test_case_append);
+    "test_case_incr_decr" >:: (bracket test_case_incr_decr);
   ] in
-  Random.self_init () ;
+  Random.self_init ();
   run_test_tt_main suite

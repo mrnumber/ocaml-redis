@@ -196,6 +196,7 @@ module Make(IO : Make.IO) = struct
   let return_float = function
     | `Int n   -> IO.return (float_of_int n)
     | `Int64 n -> IO.return (Int64.to_float n)
+    | `Bulk (Some str) -> IO.return (float_of_string str)
     | x        -> IO.fail (Unexpected x)
 
   let return_multibulk = function
@@ -534,6 +535,11 @@ module Make(IO : Make.IO) = struct
     let increment = string_of_int increment in
     let command = [ "INCRBY"; key; increment ] in
     send_request connection command >>= return_int
+
+  let incrbyfloat connection key increment =
+    let increment = string_of_float increment in
+    let command = [ "INCRBYFLOAT"; key; increment ] in
+    send_request connection command >>= return_float
 
   let mget connection keys =
     let command = "MGET" :: keys in
