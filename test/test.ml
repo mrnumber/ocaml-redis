@@ -14,7 +14,7 @@ let redis_test_port () =
   with Not_found ->
     6379
 
-let redis_string_bucket() =
+let redis_string_bucket () =
   let number = Random.bits () in
   let bucket = ("ounit_" ^ string_of_int(number)) in
   bucket
@@ -117,6 +117,15 @@ let test_case_type conn =
   assert_bool "Got wrong key type for string_key" (R.type_of conn string_key = `String);
   assert_bool "Got wrong key type for list_key" (R.type_of conn list_key = `List)
 
+(* APPEND *)
+let test_case_append conn =
+  let module R = Redis_sync.Client in
+  let key = redis_string_bucket() in
+  let value = redis_string_bucket() in
+  assert_bool "Can't append initial value to key" (R.append conn key value = String.length value);
+  assert_bool "Can't append additional value to key"
+              (R.append conn key value = (String.length value + String.length value));
+  assert_bool "Can't get key" (R.get conn key = Some (String.concat "" [value; value]))
 
 let bracket test_case () =
   let conn = setup () in
@@ -131,6 +140,7 @@ let _ =
     "test_case_dump_restore" >:: (bracket test_case_dump_restore);
     "test_case_expire" >:: (bracket test_case_expire);
     "test_case_type" >:: (bracket test_case_type);
+    "test_case_append" >:: (bracket test_case_append);
   ] in
   Random.self_init ();
   run_test_tt_main suite
