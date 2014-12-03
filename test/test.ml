@@ -17,7 +17,7 @@ let redis_test_port () =
 let redis_string_bucket() =
   let number = Random.bits () in
   let bucket = ("ounit_" ^ string_of_int(number)) in
-    bucket
+  bucket
 
 let redis_open_connection =
   let host = redis_test_host () in
@@ -34,13 +34,13 @@ let teardown conn =
 let test_case_ping conn =
   match Redis_sync.Client.ping conn with
     | true -> ()
-    | false -> assert_failure("Can't connect to Redis server")
+    | false -> assert_failure "Can't connect to Redis server"
 
 (* ECHO *)
 let test_case_echo conn =
   match Redis_sync.Client.echo conn "ECHO" with
     | Some "ECHO" -> ()
-    | _ -> assert_failure("Can't echo to Redis server")
+    | _ -> assert_failure "Can't echo to Redis server"
 
 (* Keys test case *)
 let test_case_keys conn =
@@ -132,5 +132,5 @@ let _ =
     "test_case_expire" >:: (bracket test_case_expire);
     "test_case_type" >:: (bracket test_case_type);
   ] in
-  Random.self_init () ;
+  Random.self_init ();
   run_test_tt_main suite
