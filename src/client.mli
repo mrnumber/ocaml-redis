@@ -36,6 +36,9 @@ module Make(IO : Make.IO) : sig
     port : int;
   }
 
+  (* possible bit operations *)
+  type bit_operation = AND | OR | XOR | NOT
+
   val connect : connection_spec -> connection IO.t
   val disconnect : connection -> unit IO.t
   val with_connection : connection_spec -> (connection -> 'a IO.t) -> 'a IO.t
@@ -129,9 +132,6 @@ module Make(IO : Make.IO) : sig
 
   val get : connection -> string -> string option IO.t
 
-  (* Out of range offsets will return 0. *)
-  val getbit : connection -> string -> int -> int IO.t
-
   (* Out of range arguments are handled by limiting to valid range. *)
   val getrange : connection -> string -> int -> int -> string option IO.t
 
@@ -155,9 +155,6 @@ module Make(IO : Make.IO) : sig
 
   val set : connection -> string -> string -> unit IO.t
 
-  (* Returns the original bit value. *)
-  val setbit : connection -> string -> int -> int -> int IO.t
-
   val setex : connection -> string -> int -> string -> unit IO.t
 
   (* Returns true if key was set, false otherwise. *)
@@ -167,6 +164,18 @@ module Make(IO : Make.IO) : sig
   val setrange : connection -> string -> int -> string -> int IO.t
 
   val strlen : connection -> string -> int IO.t
+
+  (** Bitwise commands *)
+
+  val setbit : connection -> string -> int -> int -> int IO.t
+
+  val getbit : connection -> string -> int -> int IO.t
+
+  val bitop : connection -> bit_operation -> string -> string list -> int IO.t
+
+  val bitcount : ?first:int -> ?last:int -> connection -> string -> int IO.t
+
+  val bitpos : ?first:int -> ?last:int -> connection -> string -> int -> int IO.t
 
   (** Hash commands *)
 

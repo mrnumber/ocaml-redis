@@ -38,6 +38,8 @@ module Make(IO : Make.IO) = struct
     port : int;
   }
 
+  type bit_operation = AND | OR | XOR | NOT
+
   let write out_ch args =
     let num_args = List.length args in
     IO.output_string out_ch (Printf.sprintf "*%d" num_args) >>= fun () ->
@@ -509,12 +511,6 @@ module Make(IO : Make.IO) = struct
     let command = [ "GET"; key ] in
     send_request connection command >>= return_bulk
 
-  (* Out of range offsets will return 0. *)
-  let getbit connection key offset =
-    let offset = string_of_int offset in
-    let command = [ "GETBIT"; key; offset ] in
-   send_request connection command >>= return_int
-
   (* Out of range arguments are handled by limiting to valid range. *)
   let getrange connection key start stop =
     let start = string_of_int start in
@@ -560,13 +556,6 @@ module Make(IO : Make.IO) = struct
     let command = [ "SET"; key; value ] in
     send_request connection command >>= return_ok_status
 
-  (* Returns the original bit value. *)
-  let setbit connection key offset value =
-    let offset = string_of_int offset in
-    let value = string_of_int value in
-    let command = [ "SETBIT"; key; offset; value ] in
-    send_request connection command >>= return_int
-
   let setex connection key seconds value =
     let seconds = string_of_int seconds in
     let command = [ "SETEX"; key; seconds; value ] in
@@ -585,6 +574,41 @@ module Make(IO : Make.IO) = struct
 
   let strlen connection key =
     let command = [ "STRLEN"; key ] in
+    send_request connection command >>= return_int
+
+  (** Bitwise commands *)
+
+  let setbit connection key offset value =
+    let offset = string_of_int offset in
+    let value = string_of_int value in
+    let command = [ "SETBIT"; key; offset; value ] in
+    send_request connection command >>= return_int
+
+  let getbit connection key offset =
+    let offset = string_of_int offset in
+    let command = [ "GETBIT"; key; offset ] in
+    send_request connection command >>= return_int
+
+  let bitop connection op dest args =
+    let op = (match op with
+              | NOT -> "NOT"
+              | AND -> "AND"
+              | OR -> "OR"
+              | XOR -> "XOR") in
+    let command = List.concat [["BITOP"; op; dest]; args] in
+    send_request connection command >>= return_int
+
+  let bitcount ?(first=0) ?(last=(- 1)) connection key =
+    let first = string_of_int first in
+    let last = string_of_int last in
+    let command = ["BITCOUNT"; key; first; last] in
+    send_request connection command >>= return_int
+
+  let bitpos ?(first=0) ?(last=(- 1)) connection key bit =
+    let bit = string_of_int bit in
+    let first = string_of_int first in
+    let last = string_of_int last in
+    let command = ["BITPOS"; key; bit; first; last] in
     send_request connection command >>= return_int
 
   (** Hash commands *)
