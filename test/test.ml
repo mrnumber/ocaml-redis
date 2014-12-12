@@ -156,6 +156,34 @@ let test_case_incr_decr conn =
   assert_bool "Can't increment value by negative float"
               (R.incrbyfloat conn key (- 2.) = (float_of_int value))
 
+(* BITOP/BITCOUNT/BITPOS/GETBIT/SETBIT *)
+let test_case_bit_operations conn =
+  let module R = Redis_sync.Client in
+  let dest = redis_string_bucket() in
+  let key1 = redis_string_bucket() in
+  let key2 = redis_string_bucket() in
+  let value1 = "foobar" in
+  let value2 = "abcdef" in
+  let value3 = "\x00\xff\xf0" in
+  assert_bool "Can't set value1 to key1" (R.set conn key1 value1 = ());
+  assert_bool "Can't set value2 to key2" (R.set conn key2 value2 = ());
+  assert_bool "Can't execute BITOP AND key1 and key2" (R.bitop conn R.AND dest [key1; key2] = 6);
+  assert_bool "Got unexpected value from dest" (R.get conn dest = Some "`bc`ab");
+  assert_bool "Can't execute BITOP NOT key1" (R.bitop conn R.NOT dest [key1] = 6);
+  assert_bool "Got unexpected value from dest" (R.get conn dest = Some "\x99\x90\x90\x9d\x9e\x8d");
+  assert_bool "Can't set value3 to key1" (R.set conn key1 value3 = ());
+  assert_bool "Got unexpected bit position" (R.bitpos conn key1 1 = 8);
+  assert_bool "Got unexpected bit position" (R.bitpos conn key1 1 ~first:0 = 8);
+  assert_bool "Got unexpected bit position" (R.bitpos conn key1 1 ~first:2 = 16);
+  assert_bool "Can't get bit" (R.getbit conn key1 0 = 0);
+  assert_bool "Can't set bit" (R.setbit conn key1 0 1 = 0);
+  assert_bool "Can't get bit" (R.getbit conn key1 0 = 1);
+  assert_bool "Can't set value1 to key1" (R.set conn key1 value1 = ());
+  assert_bool "Got unexpected bit count" (R.bitcount conn key1 = 26);
+  assert_bool "Got unexpected bit count" (R.bitcount conn key1 ~first:1 = 22);
+  assert_bool "Got unexpected bit count" (R.bitcount conn key1 ~first:0 ~last:0 = 4);
+  assert_bool "Got unexpected bit count" (R.bitcount conn key1 ~first:1 ~last:1 = 6)
+
 let bracket test_case () =
   let conn = setup () in
   let _ = test_case conn in
@@ -171,6 +199,7 @@ let _ =
     "test_case_type" >:: (bracket test_case_type);
     "test_case_append" >:: (bracket test_case_append);
     "test_case_incr_decr" >:: (bracket test_case_incr_decr);
+    "test_case_bit_operations" >:: (bracket test_case_bit_operations);
   ] in
   Random.self_init ();
   run_test_tt_main suite
