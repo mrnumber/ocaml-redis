@@ -386,6 +386,21 @@ module Make(IO : Make.IO) = struct
     let command = [ "KEYS"; pattern ] in
     send_request connection command >>= return_no_nil_multibulk
 
+  (* Cursor based iteration through all keys in database. *)
+  let scan ?(pattern="*") ?(count=10) connection cursor =
+    let cursor = string_of_int cursor in
+    let count = string_of_int count in
+    let command = ["SCAN"; cursor; "MATCH"; pattern; "COUNT"; count] in
+    send_request connection command >>= return_multibulk >>=
+      function
+      | `Bulk Some next_cursor :: `Multibulk keys :: [] ->
+         let next_cursor = int_of_string next_cursor in
+         let keys = List.map (function
+                               | `Bulk (Some s) -> s
+                               | x -> IO.fail (Unexpected x); "") keys in
+         IO.return (next_cursor, keys)
+      | _ -> IO.fail (Error "SCAN returned unexpected result")
+
   (* Move key to a different db; returns true if key was moved, false otherwise. *)
   let move connection key index =
     let index = string_of_int index in

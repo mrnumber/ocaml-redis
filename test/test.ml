@@ -184,6 +184,19 @@ let test_case_bit_operations conn =
   assert_bool "Got unexpected bit count" (R.bitcount conn key1 ~first:0 ~last:0 = 4);
   assert_bool "Got unexpected bit count" (R.bitcount conn key1 ~first:1 ~last:1 = 6)
 
+let test_case_scan conn =
+  let module R = Redis_sync.Client in
+  let rec scan_keys cursor keys =
+    let next_cursor, next_keys = R.scan conn cursor in
+    let next_keys = List.concat [keys; next_keys] in
+    if next_cursor == 0 then
+      next_keys
+    else
+      scan_keys next_cursor next_keys in
+  let scan_all_keys () = scan_keys 0 [] in
+  assert_bool "Number of keys got with KEYS command is not equal to number of keys got with SCAN command"
+              (List.length (R.keys conn "*") = List.length (scan_all_keys ()))
+
 let bracket test_case () =
   let conn = setup () in
   let _ = test_case conn in
@@ -200,6 +213,7 @@ let _ =
     "test_case_append" >:: (bracket test_case_append);
     "test_case_incr_decr" >:: (bracket test_case_incr_decr);
     "test_case_bit_operations" >:: (bracket test_case_bit_operations);
+    "test_case_scan" >:: (bracket test_case_scan);
   ] in
   Random.self_init ();
   run_test_tt_main suite

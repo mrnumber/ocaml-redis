@@ -76,6 +76,9 @@ module Make(IO : Make.IO) : sig
   (* Probably not a good idea to use this in production; see Redis documentation. *)
   val keys : connection -> string -> string list IO.t
 
+  (* Cursor based iteration through all keys in database. *)
+  val scan : ?pattern:string -> ?count:int -> connection -> int -> (int * string list) IO.t
+
   (* Move key to a different db; returns true if key was moved, false otherwise. *)
   val move : connection -> string -> int -> bool IO.t
 
