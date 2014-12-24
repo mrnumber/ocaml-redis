@@ -9,6 +9,22 @@ Ocaml bindings for [Redis](http://redis.io/)
 
 ## Quick start
 
-1. ./configure --enable-lwt
-2. make
-3. make install
+### With OPAM
+
+```
+opam install redis
+```
+
+It you want Lwt support, but doesn't have Lwt installed:
+
+```
+opam install lwt redis
+```
+
+### Without OPAM
+
+```
+./configure --enable-lwt
+make
+make install
+```
