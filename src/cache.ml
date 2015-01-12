@@ -1,5 +1,4 @@
 (** A convenience module for writing redis caches *)
-open Batteries
 
 (** Signature to parameterize the cache *)
 module type S = sig
@@ -23,7 +22,7 @@ module Make(IO : Make.IO)(Client : module type of Client.Make(IO))(S : S) = stru
     let key = S.cache_key key in
     let data = S.string_of_data data in
     set r key data >>= fun () ->
-    IO.return (Option.may
+    IO.return (Utils.Option.may
       (fun cache_expiration ->
         IO.ignore_result (expire r key cache_expiration)
       )
@@ -32,7 +31,7 @@ module Make(IO : Make.IO)(Client : module type of Client.Make(IO))(S : S) = stru
   let get r key =
     let key = S.cache_key key in
     get r key >>= fun value ->
-    IO.return (Option.map S.data_of_string value)
+    IO.return (Utils.Option.map S.data_of_string value)
 
   let delete r key =
     let key = S.cache_key key in

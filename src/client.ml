@@ -2,7 +2,6 @@
 
     This has only been tested with Redis 2.2, but will probably work for >= 2.0
  **)
-open Batteries
 
 (* Make communication module *)
 module Make(IO : Make.IO) = struct
@@ -217,12 +216,12 @@ module Make(IO : Make.IO) = struct
   (* multibulks all of whose entries are not nil *)
   let return_no_nil_multibulk reply =
     return_bulk_multibulk reply >>= fun list ->
-    IO.return (List.filter_map identity list)
+    IO.return (Utils.List.filter_map (fun x -> x) list)
 
   let return_key_value_multibulk reply =
     return_bulk_multibulk reply >>= fun list ->
       try
-        IO.return (List.filter_map (function
+        IO.return (Utils.List.filter_map (function
           | (Some k, Some v) -> Some (k, v)
           | _ -> None
         ) (deinterleave list))
@@ -237,9 +236,9 @@ module Make(IO : Make.IO) = struct
   let return_info_bulk reply =
     return_bulk reply >>= function
       | Some b ->
-          let fields = String.nsplit b "\r\n" in
-          let fields = List.filter (fun x -> x <> "" && not (String.starts_with x "#") ) fields in
-          IO.return (List.map (fun f -> String.split f ":") fields)
+          let fields = Utils.String.nsplit b "\r\n" in
+          let fields = List.filter (fun x -> x <> "" && not (String.get x 0 = '#')) fields in
+          IO.return (Utils.List.filter_map (fun f -> Utils.String.split f ":") fields)
       | None   -> IO.return []
 
   (* generate command for SORT *)
@@ -866,7 +865,7 @@ module Make(IO : Make.IO) = struct
 
   (* Lists the currently active channels. If no pattern is specified, all channels are listed. *)
   let pubsub_channels connection channels =
-    let message = Option.default "*" channels in
+    let message = Utils.Option.default "*" channels in
     let command = ["PUBSUB"; "CHANNELS"; message ] in
     send_request connection command >>= return_multibulk
 
