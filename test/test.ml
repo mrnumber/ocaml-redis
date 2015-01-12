@@ -54,6 +54,12 @@ let test_case_echo conn =
     | Some "ECHO" -> ()
     | _ -> assert_failure "Can't echo to Redis server"
 
+(* INFO *)
+let test_case_info conn =
+  let info = Redis_sync.Client.info conn in
+  let tcp_port = List.filter (fun (k, v) -> k = "tcp_port") info |> List.hd |> snd in
+  assert_bool "Got wrong data about port with INFO command" (int_of_string tcp_port = redis_test_port())
+
 (* Keys test case *)
 let test_case_keys conn =
   let module R = Redis_sync.Client in
@@ -206,6 +212,7 @@ let _ =
   let suite = "Redis" >::: [
     "test_case_ping" >:: (bracket test_case_ping);
     "test_case_echo" >:: (bracket test_case_echo);
+    "test_case_info" >:: (bracket test_case_info);
     "test_case_keys" >:: (bracket test_case_keys);
     "test_case_dump_restore" >:: (bracket test_case_dump_restore);
     "test_case_expire" >:: (bracket test_case_expire);
