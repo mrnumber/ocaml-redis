@@ -29,5 +29,6 @@ opam install ${OPAM_DEPENDS}
 eval `opam config env`
 sudo service redis-server start
 ocaml setup.ml -configure --enable-tests
+ocaml setup.ml -configure --enable-lwt
 ocaml setup.ml -build
 ocaml setup.ml -test

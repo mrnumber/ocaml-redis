@@ -28,11 +28,11 @@ module IO = struct
   let output_string = Lwt_chan.output_string
   let flush = Lwt_chan.flush
 
-  let iter = Lwt_util.iter
-  let iter_serial = Lwt_util.iter_serial
-  let map = Lwt_util.map
-  let map_serial = Lwt_util.map_serial
-  let fold_left = Lwt_util.fold_left
+  let iter = Lwt_list.iter_p
+  let iter_serial = Lwt_list.iter_s
+  let map = Lwt_list.map_p
+  let map_serial = Lwt_list.map_s
+  let fold_left = Lwt_list.fold_left_s
 
   let stream_from = Lwt_stream.from
   let stream_next = Lwt_stream.next
