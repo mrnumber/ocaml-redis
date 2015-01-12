@@ -12,6 +12,8 @@ module List = struct
 end
 
 module String = struct
+  module Str = Re_str
+
   let nsplit str delim = Str.split (Str.regexp delim) str
 
   let split str delim =

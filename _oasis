@@ -13,7 +13,7 @@ Library redis
   Pack: true
   Modules: Redis_sync
   InternalModules: Client, Cache, Mutex, Make
-  BuildDepends: str, uuidm
+  BuildDepends: re.str, uuidm
 
 Flag lwt
   Description: Build the Lwt client
