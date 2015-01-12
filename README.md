@@ -4,7 +4,6 @@ Ocaml bindings for [Redis](http://redis.io/)
 
 ## Dependencies
 
-* [Batteries](https://github.com/ocaml-batteries-team/batteries-included.git)
 * [Lwt](http://ocsigen.org/lwt/install) (optional)
 
 ## Quick start
