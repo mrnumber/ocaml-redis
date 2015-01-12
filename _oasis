@@ -13,7 +13,7 @@ Library redis
   Pack: true
   Modules: Redis_sync
   InternalModules: Client, Cache, Mutex, Make
-  BuildDepends: batteries, uuidm
+  BuildDepends: str, uuidm
 
 Flag lwt
   Description: Build the Lwt client
@@ -41,13 +41,13 @@ Executable redis_examples
   BuildDepends: threads, core, redis, redis_lwt, lwt.unix, lwt
 
 Executable test
-  Path:		test
-  BuildTools:	ocamlbuild
-  MainIs:	test.ml
-  BuildDepends:	lwt, lwt.unix, oUnit, redis
-  Install:	false
-  Build$:	flag(tests)
+  Path:                 test
+  BuildTools:   ocamlbuild
+  MainIs:       test.ml
+  BuildDepends:         lwt, lwt.unix, oUnit, redis
+  Install:      false
+  Build$:       flag(tests)
 
 Test main
-  Run$:		flag(tests)
-  Command:	$test
+  Run$:                 flag(tests)
+  Command:      $test

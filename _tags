@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: e7c0f94fa6df599a02800c8237d35a94)
+# DO NOT EDIT (digest: 75264abfce4c94214b8e62b1ce700ed0)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -23,39 +23,39 @@ true: annot, bin_annot
 "src/make.cmx": for-pack(Redis)
 # Library redis_lwt
 "src/redis_lwt.cmxs": use_redis_lwt
-<src/*.ml{,i,y}>: pkg_batteries
 <src/*.ml{,i,y}>: pkg_lwt
 <src/*.ml{,i,y}>: pkg_lwt.unix
+<src/*.ml{,i,y}>: pkg_str
 <src/*.ml{,i,y}>: pkg_uuidm
 <src/*.ml{,i,y}>: use_redis
 # Executable redis_examples
-<examples/examples.{native,byte}>: pkg_batteries
 <examples/examples.{native,byte}>: pkg_core
 <examples/examples.{native,byte}>: pkg_lwt
 <examples/examples.{native,byte}>: pkg_lwt.unix
 <examples/examples.{native,byte}>: pkg_redis_lwt
+<examples/examples.{native,byte}>: pkg_str
 <examples/examples.{native,byte}>: pkg_threads
 <examples/examples.{native,byte}>: pkg_uuidm
 <examples/examples.{native,byte}>: use_redis
-<examples/*.ml{,i,y}>: pkg_batteries
 <examples/*.ml{,i,y}>: pkg_core
 <examples/*.ml{,i,y}>: pkg_lwt
 <examples/*.ml{,i,y}>: pkg_lwt.unix
 <examples/*.ml{,i,y}>: pkg_redis_lwt
+<examples/*.ml{,i,y}>: pkg_str
 <examples/*.ml{,i,y}>: pkg_threads
 <examples/*.ml{,i,y}>: pkg_uuidm
 <examples/*.ml{,i,y}>: use_redis
 # Executable test
-"test/test.byte": pkg_batteries
 "test/test.byte": pkg_lwt
 "test/test.byte": pkg_lwt.unix
 "test/test.byte": pkg_oUnit
+"test/test.byte": pkg_str
 "test/test.byte": pkg_uuidm
 "test/test.byte": use_redis
-<test/*.ml{,i,y}>: pkg_batteries
 <test/*.ml{,i,y}>: pkg_lwt
 <test/*.ml{,i,y}>: pkg_lwt.unix
 <test/*.ml{,i,y}>: pkg_oUnit
+<test/*.ml{,i,y}>: pkg_str
 <test/*.ml{,i,y}>: pkg_uuidm
 <test/*.ml{,i,y}>: use_redis
 # OASIS_STOP
