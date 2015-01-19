@@ -31,6 +31,11 @@ let redis_float_bucket () =
   let b = float_of_int (Random.bits ()) in
   float_of_string (Printf.sprintf "%.8f" (a /. b))
 
+let redis_n_strings_bucket n =
+  let rec helper acc n =
+    if n = 0 then acc else helper (redis_string_bucket () :: acc) (n - 1)in
+  helper [] n
+
 let redis_open_connection =
   let host = redis_test_host () in
   let port = redis_test_port () in
@@ -203,6 +208,23 @@ let test_case_scan conn =
   assert_bool "Number of keys got with KEYS command is not equal to number of keys got with SCAN command"
               (List.length (R.keys conn "*") = List.length (scan_all_keys ()))
 
+let test_case_multiple_keys conn =
+  let module R = Redis_sync.Client in
+  let keys = redis_n_strings_bucket 10 in
+  let values = List.rev keys in
+  let kv_pairs = List.combine keys values in
+  assert_bool "Can't set multiple keys" (R.mset conn kv_pairs = ());
+  let expected_values = List.map (fun x -> Some x) values in
+  let got_values = R.mget conn keys in
+  List.iter2 (fun expected got -> assert_bool "Got unexpected value" (expected = got)) expected_values got_values;
+
+  let another_values = redis_n_strings_bucket 10 in
+  let kv_pairs = List.combine keys another_values in
+  assert_bool "It's possible MSETNX multiple keys" (R.msetnx conn kv_pairs = false);
+  let another_keys = redis_n_strings_bucket 10 in
+  let kv_pairs = List.combine another_keys another_values in
+  assert_bool "Can't MSETNX multiple keys" (R.msetnx conn kv_pairs = true)
+
 let bracket test_case () =
   let conn = setup () in
   let _ = test_case conn in
@@ -214,6 +236,7 @@ let _ =
     "test_case_echo" >:: (bracket test_case_echo);
     "test_case_info" >:: (bracket test_case_info);
     "test_case_keys" >:: (bracket test_case_keys);
+    "test_case_multiple_keys" >:: (bracket test_case_multiple_keys);
     "test_case_dump_restore" >:: (bracket test_case_dump_restore);
     "test_case_expire" >:: (bracket test_case_expire);
     "test_case_type" >:: (bracket test_case_type);
