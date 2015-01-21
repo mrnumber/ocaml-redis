@@ -15,6 +15,7 @@ module IO = struct
   let ignore_result = Lwt.ignore_result
   let return = Lwt.return
   let fail = Lwt.fail
+  let run = Lwt_main.run
 
   let socket = Lwt_unix.socket
   let connect = Lwt_unix.connect

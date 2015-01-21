@@ -15,6 +15,7 @@ module IO : sig
   val ignore_result : 'a Lwt.t -> unit
   val return : 'a -> 'a Lwt.t
   val fail : exn -> 'a Lwt.t
+  val run : 'a Lwt.t -> 'a
 
   val socket : Lwt_unix.socket_domain -> Lwt_unix.socket_type -> int -> file_descr
   val connect : file_descr -> Lwt_unix.sockaddr -> unit Lwt.t
