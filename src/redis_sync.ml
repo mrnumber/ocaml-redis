@@ -13,6 +13,7 @@ module IO = struct
   let ignore_result = ignore
   let return a = a
   let fail e = raise e
+  let run a = a
 
   let socket = Unix.socket
   let connect = Unix.connect

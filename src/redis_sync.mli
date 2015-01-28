@@ -13,6 +13,7 @@ module IO : sig
   val ignore_result : 'a -> unit
   val return : 'a -> 'a
   val fail : exn -> 'a
+  val run : 'a t -> 'a
 
   val socket : Unix.socket_domain -> Unix.socket_type -> int -> file_descr
   val connect : file_descr -> Unix.sockaddr -> unit

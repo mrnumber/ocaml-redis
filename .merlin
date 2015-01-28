@@ -1,0 +1,11 @@
+PKG uuidm
+PKG lwt
+PKG lwt.unix
+PKG re.str
+PKG oUnit
+
+S src
+S test
+S examples
+
+B _build/**

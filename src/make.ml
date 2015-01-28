@@ -14,6 +14,7 @@ module type IO = sig
   val ignore_result : 'a t -> unit
   val return        : 'a -> 'a t
   val fail          : exn -> 'a t
+  val run           : 'a t -> 'a
 
   (* Lwt_unix stuff *)
   val socket  : Unix.socket_domain -> Unix.socket_type -> int -> file_descr

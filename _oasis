@@ -23,8 +23,8 @@ Library redis_lwt
   Build$: flag(lwt)
   Install$: flag(lwt)
   Path: src
-  Findlibname: lwt
   FindlibParent: redis
+  Findlibname: lwt
   Modules: Redis_lwt
   BuildDepends: lwt.unix, lwt, redis
 
@@ -38,16 +38,28 @@ Executable redis_examples
   Build$: flag(examples)
   Install: false
   CompiledObject: best
-  BuildDepends: threads, core, redis, redis_lwt, lwt.unix, lwt
+  BuildDepends: threads, core, redis, redis.lwt, lwt.unix, lwt
 
 Executable test
-  Path:                 test
-  BuildTools:   ocamlbuild
-  MainIs:       test.ml
-  BuildDepends:         lwt, lwt.unix, oUnit, redis
-  Install:      false
-  Build$:       flag(tests)
+  Path: test
+  BuildTools: ocamlbuild
+  MainIs: test_sync.ml
+  BuildDepends: oUnit, redis
+  Install: false
+  Build$: flag(tests)
+
+Executable test_lwt
+  Path: test
+  BuildTools: ocamlbuild
+  MainIs: test_lwt.ml
+  BuildDepends: lwt.unix, lwt, oUnit, redis, redis.lwt
+  Install: false
+  Build$: flag(tests) && flag(lwt)
 
 Test main
-  Run$:                 flag(tests)
-  Command:      $test
+  Run$: flag(tests)
+  Command: $test
+
+Test main_lwt
+  Run$: flag(tests) && flag(lwt)
+  Command: $test_lwt
