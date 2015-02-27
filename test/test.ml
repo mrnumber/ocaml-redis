@@ -78,10 +78,25 @@ module Make(IO : Redis.Make.IO) = struct
     let key' = redis_string_bucket () in
     let key'' = redis_string_bucket () in
 
+    Client.object_encoding conn key >>=
+    io_assert "Unexpected encoding for empty key" ((=) None) >>= fun () ->
+    Client.object_idletime conn key >>=
+    io_assert "Unexpected idletime for empty key" ((=) None) >>= fun () ->
+    Client.object_refcount conn key >>=
+
+    io_assert "Unexpected refcount for empty key" ((=) None) >>= fun () ->
     Client.set conn key value >>=
     io_assert "Can't set key" ((=) ()) >>= fun () ->
     Client.get conn key >>=
     io_assert "Key and value mismatch" ((=) (Some value)) >>= fun () ->
+
+    Client.object_encoding conn key >>=
+    io_assert "Unexpected encoding for raw value" ((=) (Some "raw")) >>= fun () ->
+    Client.object_idletime conn key >>=
+    io_assert "Unexpected idletime for just requested key" ((=) (Some 0)) >>= fun () ->
+    Client.object_refcount conn key >>=
+    io_assert "Unexpected refcount for referenced key" ((=) (Some 1)) >>= fun () ->
+
     Client.exists conn key >>=
     io_assert "Key doesn't exist" ((=) true) >>= fun () ->
     Client.keys conn key >>=
