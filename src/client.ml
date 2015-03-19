@@ -285,8 +285,10 @@ module Make(IO : Make.IO) = struct
   let connect spec =
     let s = IO.socket (Unix.PF_INET) Unix.SOCK_STREAM 0 in
     let sock_addr =
-      let inet_addr = Unix.inet_addr_of_string spec.host in
-      Unix.ADDR_INET (inet_addr, spec.port)
+      let port = string_of_int spec.port in
+      match Unix.getaddrinfo spec.host port [] with
+        | [] -> failwith "Could not resolve redis host!"
+        | addrinfo::_ -> addrinfo.Unix.ai_addr
     in
     IO.connect s sock_addr >>= fun () ->
     let in_ch = IO.in_channel_of_descr s in
