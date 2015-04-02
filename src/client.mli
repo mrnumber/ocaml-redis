@@ -319,6 +319,9 @@ module Make(IO : Make.IO) : sig
   (* Subscribes the client to the given patterns. *)
   val psubscribe : connection -> string list -> unit IO.t
 
+  (* Unsubscribes the client from the given patterns. *)
+  val punsubscribe : connection -> string list -> unit IO.t
+
   (** Sorted Set commands *)
 
   (* Add one or more members to a sorted set, or update its score if it already exists. *)
