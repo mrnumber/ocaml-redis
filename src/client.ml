@@ -886,6 +886,16 @@ module Make(IO : Make.IO) = struct
     let command = "UNSUBSCRIBE" :: channels in
     write connection.out_ch command
 
+  (* Subscribes the client to the given patterns. *)
+  let psubscribe connection patterns =
+    let command = "PSUBSCRIBE" :: patterns in
+    write connection.out_ch command >>= fun () -> IO.return ()
+
+  (* Unsubscribes the client from the given patterns. *)
+  let punsubscribe connection patterns =
+    let command = "PUNSUBSCRIBE" :: patterns in
+    write connection.out_ch command
+
   (** Sorted Set commands *)
 
   (* Add one or more members to a sorted set, or update its score if it already exists. *)
