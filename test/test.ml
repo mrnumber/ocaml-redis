@@ -95,6 +95,10 @@ module Make(IO : Redis.Make.IO) = struct
     io_assert "Got unexpected value" ((=) (Some value)) >>= fun () ->
     Client.getrange conn key 0 (String.length value) >>=
     io_assert "Value and it's getrange copy differs" ((=) (Some value)) >>= fun () ->
+    Client.setrange conn key 0 value >>=
+    io_assert "Value and it's copy setrange result differs" ((=) (String.length value)) >>= fun () ->
+    Client.strlen conn key >>=
+    io_assert "Value length and it's strlen differs" ((=) (String.length value)) >>= fun () ->
 
     Client.object_encoding conn key >>=
     io_assert "Unexpected encoding for raw value" ((=) (Some "raw")) >>= fun () ->
