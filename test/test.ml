@@ -174,6 +174,17 @@ module Make(IO : Redis.Make.IO) = struct
     let value = redis_string_bucket () in
     Client.set conn key value >>=
     io_assert "Can't set key" ((=) ()) >>= fun () ->
+    Client.setex conn key 1 value >>=
+    io_assert "Can't setex key" ((=) ()) >>= fun () ->
+    Client.psetex conn key 1000 value >>=
+    io_assert "Can't psetex key" ((=) ()) >>= fun () ->
+    Client.ttl conn key >>=
+    io_assert "Can't check expiration timeout for key"
+      (fun x -> List.mem x [Some 0; Some 1]) >>= fun () ->
+    Client.pttl conn key >>| (function
+      | Some pttl -> assert_bool "Expiration timeout differs from setted" (0 <= pttl && pttl <= 1000)
+      | None -> assert_failure "Can't check expiration timeout for key")
+    >>= fun () ->
     Client.expire conn key 1 >>=
     io_assert "Can't set expiration timeout for key" ((=) true) >>= fun () ->
     Client.pexpire conn key 1000 >>=

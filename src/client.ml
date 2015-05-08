@@ -595,6 +595,11 @@ module Make(IO : Make.IO) = struct
     let command = [ "SETEX"; key; seconds; value ] in
     send_request connection command >>= return_ok_status
 
+  let psetex connection key milliseconds value =
+    let milliseconds = string_of_int milliseconds in
+    let command = [ "PSETEX"; key; milliseconds; value ] in
+    send_request connection command >>= return_ok_status
+
   (* Returns true if key was set, false otherwise. *)
   let setnx connection key value =
     let command = [ "SETNX"; key; value ] in
