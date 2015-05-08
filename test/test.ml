@@ -87,8 +87,14 @@ module Make(IO : Redis.Make.IO) = struct
     io_assert "Unexpected refcount for empty key" ((=) None) >>= fun () ->
     Client.set conn key value >>=
     io_assert "Can't set key" ((=) ()) >>= fun () ->
+    Client.setnx conn key value >>=
+    io_assert "Can setnx key which is already set" ((=) false) >>= fun () ->
     Client.get conn key >>=
     io_assert "Key and value mismatch" ((=) (Some value)) >>= fun () ->
+    Client.getset conn key value >>=
+    io_assert "Got unexpected value" ((=) (Some value)) >>= fun () ->
+    Client.getrange conn key 0 (String.length value) >>=
+    io_assert "Value and it's getrange copy differs" ((=) (Some value)) >>= fun () ->
 
     Client.object_encoding conn key >>=
     io_assert "Unexpected encoding for raw value" ((=) (Some "raw")) >>= fun () ->
