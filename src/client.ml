@@ -507,6 +507,24 @@ module Make(IO : Make.IO) = struct
     let command = ["RESTORE"; key; ttl; serialized_value] in
     send_request connection command >>= return_ok_status
 
+  let object_refcount connection key =
+    let command = ["OBJECT"; "REFCOUNT"; key] in
+    send_request connection command >>= function
+      | `Int x -> IO.return (Some x)
+      | _ -> IO.return None
+
+  let object_encoding connection key =
+    let command = ["OBJECT"; "ENCODING"; key] in
+    send_request connection command >>= function
+      | `Bulk x -> IO.return x
+      | _ -> IO.return None
+
+  let object_idletime connection key =
+    let command = ["OBJECT"; "IDLETIME"; key] in
+    send_request connection command >>= function
+      | `Int x -> IO.return (Some x)
+      | _ -> IO.return None
+
   (** String commands *)
 
   (* Returns length of string after append. *)

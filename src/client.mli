@@ -124,6 +124,12 @@ module Make(IO : Make.IO) : sig
   (* Create a key with serialized value (obtained via DUMP) *)
   val restore: connection -> string -> int -> string -> unit IO.t
 
+  val object_refcount: connection -> string -> int option IO.t
+
+  val object_encoding: connection -> string -> string option IO.t
+
+  val object_idletime: connection -> string -> int option IO.t
+
   (** String commands *)
 
   (* Returns length of string after append. *)
