@@ -923,6 +923,11 @@ module Make(IO : Make.IO) = struct
     let command = "ZADD" :: key :: values in
     send_request connection command >>= return_int
 
+  (* Returns the score of member in the sorted set. *)
+  let zscore connection key member =
+    let command = "ZSCORE" :: key :: member in
+    send_request connection command >>= return_bulk
+
   (* Return a range of members in a sorted set, by index. *)
   let zrange connection ?(withscores=false) key start stop =
     let istart = string_of_int start in

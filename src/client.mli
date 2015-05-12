@@ -333,6 +333,9 @@ module Make(IO : Make.IO) : sig
   (* Add one or more members to a sorted set, or update its score if it already exists. *)
   val zadd : connection -> string -> (int * string) list -> int IO.t
 
+  (* Returns the score of member in the sorted set. *)
+  val zscore : connection -> string -> string list -> string option IO.t
+
   (* Return a range of members in a sorted set, by index. *)
   val zrange : connection -> ?withscores:bool -> string -> int -> int -> reply list IO.t
 
