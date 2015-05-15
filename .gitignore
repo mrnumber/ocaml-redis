@@ -3,3 +3,5 @@
 /setup.log
 /*.byte
 /*.native
+/redis.odocl
+/redis.docdir

@@ -1,4 +1,4 @@
-OASISFormat: 0.3
+OASISFormat: 0.4
 Name:        redis
 Version:     0.2.3
 Synopsis:    Ocaml bindings for Redis
@@ -6,6 +6,7 @@ Authors:     Mike Wells
 License:     BSD-3-clause
 Plugins:     META (0.3), DevFiles (0.3)
 BuildTools:  ocamlbuild
+AlphaFeatures: ocamlbuild_more_args
 
 Library redis
   Path: src
@@ -63,3 +64,12 @@ Test main
 Test main_lwt
   Run$: flag(tests) && flag(lwt)
   Command: $test_lwt
+
+Document redis
+  Type: ocamlbuild (0.4)
+  BuildTools: ocamldoc
+  Title: API reference for ocaml-redis
+  XOCamlbuildPath: .
+  XOCamlbuildExtraArgs:
+    "-docflags '-colorize-code -charset utf-8'"
+  XOCamlbuildLibraries: redis, redis.lwt
