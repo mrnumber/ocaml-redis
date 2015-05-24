@@ -1,13 +1,12 @@
-open Redis
-
 module IO = struct
   type 'a t = 'a Lwt.t
-  type file_descr = Lwt_unix.file_descr
+
+  type fd = Lwt_unix.file_descr
   type in_channel = Lwt_chan.in_channel
   type out_channel = Lwt_chan.out_channel
 
-  type zz = unit
   type 'a stream = 'a Lwt_stream.t
+  type stream_count = unit
 
   let (>>=) = Lwt.(>>=)
   let catch = Lwt.catch
@@ -17,8 +16,15 @@ module IO = struct
   let fail = Lwt.fail
   let run = Lwt_main.run
 
-  let socket = Lwt_unix.socket
-  let connect = Lwt_unix.connect
+  let connect host port =
+    let fd = Lwt_unix.socket (Unix.PF_INET) Unix.SOCK_STREAM 0 in
+    let port = string_of_int port in
+    Lwt_unix.getaddrinfo host port [] >>= (function
+        | [] -> failwith "Could not resolve redis host!"
+        | addrinfo::_ -> return addrinfo.Lwt_unix.ai_addr) >>= (fun sock_addr ->
+        ignore (Lwt_unix.connect fd sock_addr);
+        return fd)
+
   let close = Lwt_unix.close
   let sleep = Lwt_unix.sleep
 

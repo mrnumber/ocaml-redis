@@ -34,7 +34,7 @@ let redis_n_strings_bucket n =
   helper [] n
 
 
-module Make(IO : Redis.Make.IO) = struct
+module Make(IO : Redis.S.IO) = struct
 
   module Client = Redis.Client.Make(IO)
 

@@ -1,11 +1,16 @@
 module IO = struct
   type 'a t = 'a
-  type file_descr = Unix.file_descr
+
+  type fd = Unix.file_descr
   type in_channel = Pervasives.in_channel
   type out_channel = Pervasives.out_channel
 
-  type zz = int
+  type socket_domain = Unix.socket_domain
+  type socket_type = Unix.socket_type
+  type socket_addr = Unix.sockaddr
+
   type 'a stream = 'a Stream.t
+  type stream_count = int
 
   let (>>=) a f = f a
   let catch f exn_handler = try f () with e -> exn_handler e
@@ -15,8 +20,16 @@ module IO = struct
   let fail e = raise e
   let run a = a
 
-  let socket = Unix.socket
-  let connect = Unix.connect
+  let connect host port =
+    let fd = Unix.socket (Unix.PF_INET) Unix.SOCK_STREAM 0 in
+    let sock_addr =
+      let port = string_of_int port in
+      match Unix.getaddrinfo host port [] with
+      | [] -> failwith "Could not resolve redis host!"
+        | addrinfo::_ -> addrinfo.Unix.ai_addr
+    in
+    Unix.connect fd sock_addr;
+    return fd
   let close = Unix.close
   let sleep a = ignore (Unix.select [] [] [] a)
 
