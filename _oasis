@@ -12,8 +12,7 @@ Library redis
   Path: src
   Findlibname: redis
   Pack: true
-  Modules: Redis_sync
-  InternalModules: S, Utils, Client, Cache, Mutex
+  Modules: Redis_sync, S, Utils, Client, Cache, Mutex
   BuildDepends: re.str, uuidm
 
 Flag lwt
@@ -26,8 +25,7 @@ Library redis_lwt
   Path: src
   FindlibParent: redis
   Findlibname: lwt
-  Modules: Redis_lwt
-  InternalModules: S, Utils, Client, Cache, Mutex
+  Modules: Redis_lwt, S, Utils, Client, Cache, Mutex
   BuildDepends: lwt.unix, lwt
 
 Flag examples
@@ -67,10 +65,15 @@ Test main_lwt
   Command: $test_lwt
 
 Document redis
+  Title: API reference for ocaml-redis
   Type: ocamlbuild (0.4)
   BuildTools: ocamldoc
-  Title: API reference for ocaml-redis
-  XOCamlbuildPath: .
-  XOCamlbuildExtraArgs:
-    "-docflags '-colorize-code -charset utf-8'"
-  XOCamlbuildLibraries: redis, redis.lwt
+  XOCamlbuildPath: src
+  XOCamlbuildLibraries: redis
+
+Document redis_lwt
+  Title: API reference for ocaml-redis (lwt backend)
+  Type: ocamlbuild (0.4)
+  BuildTools: ocamldoc
+  XOCamlbuildPath: src
+  XOCamlbuildLibraries: redis.lwt
