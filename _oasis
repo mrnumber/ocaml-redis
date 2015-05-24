@@ -13,7 +13,7 @@ Library redis
   Findlibname: redis
   Pack: true
   Modules: Redis_sync
-  InternalModules: Utils, Client, Cache, Mutex, Make
+  InternalModules: S, Utils, Client, Cache, Mutex
   BuildDepends: re.str, uuidm
 
 Flag lwt
@@ -27,7 +27,8 @@ Library redis_lwt
   FindlibParent: redis
   Findlibname: lwt
   Modules: Redis_lwt
-  BuildDepends: lwt.unix, lwt, redis
+  InternalModules: S, Utils, Client, Cache, Mutex
+  BuildDepends: lwt.unix, lwt
 
 Flag examples
   Description: Build the examples
