@@ -166,6 +166,8 @@ module Make(IO : Make.IO) : sig
 
   val setex : connection -> string -> int -> string -> unit IO.t
 
+  val psetex : connection -> string -> int -> string -> unit IO.t
+
   (* Returns true if key was set, false otherwise. *)
   val setnx : connection -> string -> string -> bool IO.t
 
