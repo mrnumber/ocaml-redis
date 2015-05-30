@@ -1,4 +1,4 @@
-OASISFormat: 0.3
+OASISFormat: 0.4
 Name:        redis
 Version:     0.2.3
 Synopsis:    Ocaml bindings for Redis
@@ -6,13 +6,13 @@ Authors:     Mike Wells
 License:     BSD-3-clause
 Plugins:     META (0.3), DevFiles (0.3)
 BuildTools:  ocamlbuild
+AlphaFeatures: ocamlbuild_more_args
 
 Library redis
   Path: src
   Findlibname: redis
   Pack: true
-  Modules: Redis_sync
-  InternalModules: Utils, Client, Cache, Mutex, Make
+  Modules: Redis_sync, S, Utils, Client, Cache, Mutex
   BuildDepends: re.str, uuidm
 
 Flag lwt
@@ -25,8 +25,8 @@ Library redis_lwt
   Path: src
   FindlibParent: redis
   Findlibname: lwt
-  Modules: Redis_lwt
-  BuildDepends: lwt.unix, lwt, redis
+  Modules: Redis_lwt, S, Utils, Client, Cache, Mutex
+  BuildDepends: lwt.unix, lwt
 
 Flag examples
   Description: Build the examples
@@ -63,3 +63,17 @@ Test main
 Test main_lwt
   Run$: flag(tests) && flag(lwt)
   Command: $test_lwt
+
+Document redis
+  Title: API reference for ocaml-redis
+  Type: ocamlbuild (0.4)
+  BuildTools: ocamldoc
+  XOCamlbuildPath: src
+  XOCamlbuildLibraries: redis
+
+Document redis_lwt
+  Title: API reference for ocaml-redis (lwt backend)
+  Type: ocamlbuild (0.4)
+  BuildTools: ocamldoc
+  XOCamlbuildPath: src
+  XOCamlbuildLibraries: redis.lwt

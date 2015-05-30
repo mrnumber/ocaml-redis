@@ -1,39 +1,26 @@
-(** A convenience module for writing redis caches *)
-
-(** Signature to parameterize the cache *)
-module type S = sig
-  type key
-  type data
-
-  val cache_key : key -> string
-  val cache_expiration : int option
-
-  val data_of_string : string -> data
-  val string_of_data : data -> string
-end
-
-(** Make a redis_cache *)
-module Make(IO : Make.IO)(Client : module type of Client.Make(IO))(S : S) = struct
-  open Client
+module Make(IO : S.IO)(Client : S.Client with module IO = IO)(Params : S.Cache_params) = struct
+  module IO = IO
+  module Client = Client
+  module Params = Params
 
   let (>>=) = IO.(>>=)
 
   let set r key data =
-    let key = S.cache_key key in
-    let data = S.string_of_data data in
-    set r key data >>= fun () ->
+    let key = Params.cache_key key in
+    let data = Params.string_of_data data in
+    Client.set r key data >>= fun () ->
     IO.return (Utils.Option.may
       (fun cache_expiration ->
-        IO.ignore_result (expire r key cache_expiration)
+        IO.ignore_result (Client.expire r key cache_expiration)
       )
-      S.cache_expiration)
+      Params.cache_expiration)
 
   let get r key =
-    let key = S.cache_key key in
-    get r key >>= fun value ->
-    IO.return (Utils.Option.map S.data_of_string value)
+    let key = Params.cache_key key in
+    Client.get r key >>= fun value ->
+    IO.return (Utils.Option.map Params.data_of_string value)
 
   let delete r key =
-    let key = S.cache_key key in
-    IO.ignore_result (del r [key])
+    let key = Params.cache_key key in
+    IO.ignore_result (Client.del r [key])
 end

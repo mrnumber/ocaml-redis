@@ -4,7 +4,9 @@
  **)
 
 (* Make communication module *)
-module Make(IO : Make.IO) = struct
+module Make(IO : S.IO) = struct
+  module IO = IO
+
   let (>>=) = IO.(>>=)
 
   (* reply from server *)
@@ -18,7 +20,7 @@ module Make(IO : Make.IO) = struct
   ]
 
   type connection = {
-    fd     : IO.file_descr;
+    fd     : IO.fd;
     in_ch  : IO.in_channel;
     out_ch : IO.out_channel;
     stream : reply list IO.stream;
@@ -283,19 +285,13 @@ module Make(IO : Make.IO) = struct
     List.rev !command
 
   let connect spec =
-    let s = IO.socket (Unix.PF_INET) Unix.SOCK_STREAM 0 in
-    let sock_addr =
-      let port = string_of_int spec.port in
-      match Unix.getaddrinfo spec.host port [] with
-        | [] -> failwith "Could not resolve redis host!"
-        | addrinfo::_ -> addrinfo.Unix.ai_addr
-    in
-    IO.connect s sock_addr >>= fun () ->
-    let in_ch = IO.in_channel_of_descr s in
+    let {host=host; port=port} = spec in
+    IO.connect host port >>= fun fd ->
+    let in_ch = IO.in_channel_of_descr fd in
     IO.return
-      { fd = s;
+      { fd = fd;
         in_ch = in_ch;
-        out_ch = IO.out_channel_of_descr s;
+        out_ch = IO.out_channel_of_descr fd;
         stream =
           let f _ =
             read_reply_exn in_ch >>= fun resp ->
