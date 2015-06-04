@@ -41,6 +41,8 @@ end
 module type Client = sig
   module IO : IO
 
+  (** {6 Types and exceptions } *)
+
   type reply = [
     | `Status of string
     | `Error of string
@@ -57,77 +59,89 @@ module type Client = sig
     stream : reply list IO.stream;
   }
 
-  (* error responses from server *)
+  (** Error responses from server *)
   exception Error of string
 
-  (* these signal protocol errors *)
+  (** Protocol errors *)
   exception Unexpected of reply
   exception Unrecognized of string * string (* explanation, data *)
 
-  (* server connection info *)
+  (** Server connection info *)
   type connection_spec = {
     host : string;
     port : int;
   }
 
-  (* possible bit operations *)
+  (** Possible BITOP operations *)
   type bit_operation = AND | OR | XOR | NOT
+
+
+  (** {6 Connection handling } *)
 
   val connect : connection_spec -> connection IO.t
   val disconnect : connection -> unit IO.t
   val with_connection : connection_spec -> (connection -> 'a IO.t) -> 'a IO.t
   val stream : connection -> reply list IO.stream
 
-  (* Raises Error if password is invalid. *)
+  (** {6 Connection commands } *)
+
+  (** Authenticate to server. *)
   val auth : connection -> string -> unit IO.t
 
+  (** Echo given string. *)
   val echo : connection -> string -> string option IO.t
+
+  (** Ping connection; returns [ true ] if ping was successfull. *)
   val ping : connection -> bool IO.t
+
+  (** Close connection. *)
   val quit : connection -> unit IO.t
 
-  (* Switch to a different db; raises Error if index is invalid. *)
+  (** Switch to a different db; raises {!Error} if index is invalid. *)
   val select : connection -> int -> unit IO.t
 
-  (** Generic key commands *)
+  (** {6 Keys commands} *)
 
-  (* Returns the number of keys removed. *)
+  (** Delete a key; returns the number of keys removed. *)
   val del : connection -> string list -> int IO.t
 
+  (** Determine if a key exists. *)
   val exists : connection -> string -> bool IO.t
 
-  (* Returns true if timeout (in seconds) was set, false otherwise. *)
+  (** Set a key's time to live in seconds; returns [ true ] if timeout was set, false otherwise. *)
   val expire : connection -> string -> int -> bool IO.t
 
-  (* Returns true if timeout (in milliseconds) was set, false otherwise. *)
+  (** Set a key's time to live in milliseconds; returns [ true ] if timeout was set, false otherwise. *)
   val pexpire : connection -> string -> int -> bool IO.t
 
-  (* Like "expire" but with absolute (Unix) time; the time is truncated to the nearest second. *)
+  (** Set the expiration for a key as a UNIX timestamp, the time is truncated to the nearest second; returns [ true ] if timeout was set, [ false ] otherwise. *)
   val expireat : connection -> string -> float -> bool IO.t
 
-  (* Like "pexpire" but with absolute (Unix) time in milliseconds. *)
+  (** Set the expiration for a key as a UNIX timestamp in milliseconds; returns [ true ] if timeout was set, [ false ] otherwise. *)
   val pexpireat : connection -> string -> int -> bool IO.t
 
-  (* Probably not a good idea to use this in production; see Redis documentation. *)
+  (** Find all keys matching the given pattern. *)
   val keys : connection -> string -> string list IO.t
 
-  (* Cursor based iteration through all keys in database. *)
+  (** Incrementally iterate the keys space; see tests for usage example. *)
   val scan : ?pattern:string -> ?count:int -> connection -> int -> (int * string list) IO.t
 
-  (* Move key to a different db; returns true if key was moved, false otherwise. *)
+  (** Move key to a different db; returns [ true ] if key was moved, [ false ] otherwise. *)
   val move : connection -> string -> int -> bool IO.t
 
-  (* Remove timeout on key; returns true if timeout was removed, false otherwise. *)
+  (** Remove timeout on key; returns [ true ] if timeout was removed, [ false ] otherwise. *)
   val persist : connection -> string -> bool IO.t
 
-  (* returns none if db is empty. *)
+  (** Return a random key from the keyspace; returns [ None ] if db is empty. *)
   val randomkey : connection -> string option IO.t
 
-  (* Raises Error if key doesn't exist. *)
+  (** Rename a key; raises {!Error} if key doesn't exist. *)
   val rename : connection -> string -> string -> unit IO.t
 
-  (* Raises Error if key doesn't exist; returns true if key was renamed, false if newkey already exists. *)
+  (** Rename a key, only if the new key does not exist; returns [ true ] if key was renamed, [ false ] if newkey already exists. *)
   val renamenx : connection -> string -> string -> bool IO.t
 
+  (** Sort elements in a list, set or sorted set; return sorted list of items. *)
   val sort :
     connection ->
     ?by:string ->
@@ -135,6 +149,7 @@ module type Client = sig
     ?get:'a list ->
     ?order:[< `Asc | `Desc ] -> ?alpha:bool -> string -> string list IO.t
 
+  (** Sort and store elements in a list, set or sorted set; returns length of sorted items list which was stored. *)
   val sort_and_store :
     connection ->
     ?by:string ->
@@ -143,116 +158,141 @@ module type Client = sig
     ?order:[< `Asc | `Desc ] ->
     ?alpha:bool -> string -> string -> int IO.t
 
-  (* Returns None if key doesn't exist or doesn't have a timeout. *)
+  (** Time to live for a key in seconds; returns [ None ] if key doesn't exist or doesn't have a timeout. *)
   val ttl : connection -> string -> int option IO.t
 
-  (* Returns None if key doesn't exist or doesn't have a timeout. *)
+  (** Time to live for a key in milliseconds; returns [ None ] if key doesn't exist or doesn't have a timeout. *)
   val pttl : connection -> string -> int option IO.t
 
-  (* TYPE is a reserved word in ocaml *)
+  (** Determine the type stored as key. *)
   val type_of : connection -> string -> [> `Hash | `List | `None | `String | `Zset ] IO.t
 
-  (* Serialize value stored at key in a Redis-specific format *)
+  (** Return a serialized version of the value stored at the specified key; returns [ None ] if key doesn't exist. *)
   val dump: connection -> string -> string option IO.t
 
-  (* Create a key with serialized value (obtained via DUMP) *)
+  (** Create a key with serialized value (obtained via DUMP). *)
   val restore: connection -> string -> int -> string -> unit IO.t
 
+  (** Inspect the internals of Redis objects; returns the number of references of the value associated with the specified key. *)
   val object_refcount: connection -> string -> int option IO.t
 
+  (** Inspect the internals of Redis objects; returns the kind of internal representation used in order to store the value associated with a key. *)
   val object_encoding: connection -> string -> string option IO.t
 
+  (** Inspect the internals of Redis objects; returns the number of seconds since the object stored at the specified key is idle. *)
   val object_idletime: connection -> string -> int option IO.t
 
-  (** String commands *)
+  (** {6 String commands} *)
 
-  (* Returns length of string after append. *)
+  (** Append a value to a key; returns length of string after append. *)
   val append : connection -> string -> string -> int IO.t
 
-  val decr : connection -> string -> int IO.t
-
-  val decrby : connection -> string -> int -> int IO.t
-
-  val get : connection -> string -> string option IO.t
-
-  (* Out of range arguments are handled by limiting to valid range. *)
-  val getrange : connection -> string -> int -> int -> string option IO.t
-
-  (* Set value and return old value. Raises Error when key exists but isn't a string. *)
-  val getset : connection -> string -> string -> string option IO.t
-
-  val incr : connection -> string -> int IO.t
-
-  val incrby : connection -> string -> int -> int IO.t
-
-  val incrbyfloat : connection -> string -> float -> float IO.t
-
-  val mget : connection -> string list -> string option list IO.t
-
-  (* This is atomic: either all keys are set or none are. *)
-  val mset : connection -> (string * string) list -> unit IO.t
-
-  (* Like MSET, this is atomic. If even a single key exists, no operations will be performed.
-     Returns true if all keys were set, false otherwise. *)
-  val msetnx : connection -> (string * string) list -> bool IO.t
-
-  val set : connection -> string -> string -> unit IO.t
-
-  val setex : connection -> string -> int -> string -> unit IO.t
-
-  val psetex : connection -> string -> int -> string -> unit IO.t
-
-  (* Returns true if key was set, false otherwise. *)
-  val setnx : connection -> string -> string -> bool IO.t
-
-  (* If offset > length, string will be padded with 0-bytes. Returns length of string after modification. *)
-  val setrange : connection -> string -> int -> string -> int IO.t
-
-  val strlen : connection -> string -> int IO.t
-
-  (** Bitwise commands *)
-
+  (** Sets or clears the bit at offset in the string value stored at key. *)
   val setbit : connection -> string -> int -> int -> int IO.t
 
+  (** Returns the bit value at offset in the string value stored at key. *)
   val getbit : connection -> string -> int -> int IO.t
 
+  (** Perform a bitwise operation between multiple keys (containing string values) and store the result in the destination key.
+      See {!bit_operation} type for available operations. *)
   val bitop : connection -> bit_operation -> string -> string list -> int IO.t
 
+  (** Count the number of set bits (population counting) in a string. *)
   val bitcount : ?first:int -> ?last:int -> connection -> string -> int IO.t
 
+  (** Return the position of the first bit set to 1 or 0 in a string. *)
   val bitpos : ?first:int -> ?last:int -> connection -> string -> int -> int IO.t
 
-  (** Hash commands *)
+  (** Decrements the number stored at key by one. If the key does not exist, it is set to 0 before performing the operation. *)
+  val decr : connection -> string -> int IO.t
 
-  (* Returns true if field exists and was deleted, false otherwise. *)
+  (** Decrements the number stored at key by decrement. If the key does not exist, it is set to 0 before performing the operation. *)
+  val decrby : connection -> string -> int -> int IO.t
+
+  (** Get the value of key. *)
+  val get : connection -> string -> string option IO.t
+
+  (** Returns the substring of the string value stored at key, determined by the offsets start and end (both are inclusive). *)
+  val getrange : connection -> string -> int -> int -> string option IO.t
+
+  (** Atomically sets key to value and returns the old value stored at key. Returns [ None ] when key exists but does not hold a string value. *)
+  val getset : connection -> string -> string -> string option IO.t
+
+  (** Increments the number stored at key by one. If the key does not exist, it is set to 0 before performing the operation. *)
+  val incr : connection -> string -> int IO.t
+
+  (** Increments the number stored at key by increment. If the key does not exist, it is set to 0 before performing the operation. *)
+  val incrby : connection -> string -> int -> int IO.t
+
+  (** Increment the string representing a floating point number stored at key by the specified increment. If the key does not exist, it is set to 0 before performing the operation. *)
+  val incrbyfloat : connection -> string -> float -> float IO.t
+
+  (** Returns the values of all specified keys. *)
+  val mget : connection -> string list -> string option list IO.t
+
+  (** Sets the given keys to their respective values. *)
+  val mset : connection -> (string * string) list -> unit IO.t
+
+  (** Sets the given keys to their respective values. MSETNX will not perform any operation at all even if just a single key already exists. *)
+  val msetnx : connection -> (string * string) list -> bool IO.t
+
+  (** Set key to hold the string value. *)
+  val set : connection -> string -> string -> unit IO.t
+
+  (** Set key to hold the string value and set key to timeout after a given number of seconds. *)
+  val setex : connection -> string -> int -> string -> unit IO.t
+
+  (** PSETEX works exactly like SETEX with the sole difference that the expire time is specified in milliseconds instead of seconds. *)
+  val psetex : connection -> string -> int -> string -> unit IO.t
+
+  (** Set key to hold string value if key does not exist. *)
+  val setnx : connection -> string -> string -> bool IO.t
+
+  (** Overwrites part of the string stored at key, starting at the specified offset, for the entire length of value. *)
+  val setrange : connection -> string -> int -> string -> int IO.t
+
+  (** Returns the length of the string value stored at key. An error is returned when key holds a non-string value. *)
+  val strlen : connection -> string -> int IO.t
+
+  (** {6 Hash commands} *)
+
+  (** Removes the specified fields from the hash stored at key. Specified fields that do not exist within this hash are ignored. *)
   val hdel : connection -> string -> string -> bool IO.t
 
+  (** Returns if field is an existing field in the hash stored at key. *)
   val hexists : connection -> string -> string -> bool IO.t
 
+  (** Returns the value associated with field in the hash stored at key. *)
   val hget : connection -> string -> string -> string option IO.t
 
+  (** Returns all fields and values of the hash stored at key. *)
   val hgetall : connection -> string -> (string * string) list IO.t
 
-  (* Raises error if field already contains a non-numeric value. *)
+  (** Increments the number stored at field in the hash stored at key by increment. *)
   val hincrby : connection -> string -> string -> int -> int IO.t
 
+  (** Returns all field names in the hash stored at key. *)
   val hkeys : connection -> string -> string list IO.t
 
+  (** Returns the number of fields contained in the hash stored at key. *)
   val hlen : connection -> string -> int IO.t
 
+  (** Returns the values associated with the specified fields in the hash stored at key. *)
   val hmget : connection -> string -> string list -> string option list IO.t
 
+  (** Sets the specified fields to their respective values in the hash stored at key. *)
   val hmset : connection -> string -> (string * string) list -> unit IO.t
 
-  (* Returns true if field was added, false otherwise. *)
+  (** Sets field in the hash stored at key to value. *)
   val hset : connection -> string -> string -> string -> bool IO.t
 
-  (* Returns true if field was set, false otherwise. *)
+  (** Sets field in the hash stored at key to value, only if field does not yet exist. *)
   val hsetnx : connection -> string -> string -> string -> bool IO.t
 
+  (** Returns all values in the hash stored at key. *)
   val hvals : connection -> string -> string list IO.t
 
-  (** List commands *)
+  (** {6 List commands} *)
 
   (* Blocks while all of the lists are empty. Set timeout to number of seconds OR 0 to block indefinitely. *)
   val blpop : connection -> string list -> int -> (string * string) option IO.t
@@ -302,7 +342,7 @@ module type Client = sig
 
   val rpushx : connection -> string -> string -> int IO.t
 
-  (** Set commands *)
+  (** {6 Set commands} *)
 
   (* Returns true if member was added, false otherwise. *)
   val sadd : connection -> string -> string -> bool IO.t
@@ -341,7 +381,7 @@ module type Client = sig
   (* Like SUNION, but store result in destination. Returns size of result. *)
   val sunionstore : connection -> string -> string list -> int IO.t
 
-  (** Pub/sub commands *)
+  (** {6 Pub/sub commands} *)
 
   (* Post a message to a channel. Returns number of clients that received the message. *)
   val publish : connection -> string -> string -> int IO.t
@@ -364,7 +404,7 @@ module type Client = sig
   (* Unsubscribes the client from the given patterns. *)
   val punsubscribe : connection -> string list -> unit IO.t
 
-  (** Sorted Set commands *)
+  (** {6 Sorted set commands} *)
 
   (* Add one or more members to a sorted set, or update its score if it already exists. *)
   val zadd : connection -> string -> (int * string) list -> int IO.t
@@ -378,7 +418,7 @@ module type Client = sig
   (* Remove one or more members from a sorted set. *)
   val zrem : connection -> string list -> int IO.t
 
-  (** Transaction commands *)
+  (** {6 Transaction commands} *)
 
   (* Marks the start of a transaction block. Subsequent commands will be queued for atomic execution using EXEC. *)
   val multi : connection -> unit IO.t
@@ -397,7 +437,7 @@ module type Client = sig
 
   val queue : (unit -> 'a IO.t) -> unit IO.t
 
-  (** Scripting commands *)
+  (** {6 Scripting commands} *)
 
   (* Load the specified Lua script into the script cache. Returns the SHA1 digest of the script for use with EVALSHA. *)
   val script_load : connection -> string -> string IO.t
@@ -408,7 +448,7 @@ module type Client = sig
   (* Evaluates a script cached on the server side by its SHA1 digest. *)
   val evalsha : connection -> string -> string list -> string list -> reply IO.t
 
-  (** Server *)
+  (** {6 Server} *)
 
   val bgrewriteaof : connection -> unit IO.t
 

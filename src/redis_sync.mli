@@ -1,3 +1,7 @@
+(**
+   Blocking client for Redis
+*)
+
 module IO : S.IO
 
 module Client : S.Client with module IO = IO
