@@ -1,6 +1,6 @@
 # Ocaml-redis
 
-Ocaml bindings for [Redis](http://redis.io/)
+Ocaml bindings for [Redis](http://redis.io/). API documentation can be found [here](http://0xffea.github.io/ocaml-redis/).
 
 ## Dependencies
 
