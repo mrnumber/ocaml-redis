@@ -173,6 +173,12 @@ module type Client = sig
   (** Create a key with serialized value (obtained via DUMP). *)
   val restore: connection -> string -> int -> string -> unit IO.t
 
+  (** Atomically transfer a key from a source Redis instance to a destination Redis instance. *)
+  val migrate : connection ->
+    ?copy:bool -> ?replace:bool ->
+    string -> int -> string -> int -> int ->
+    unit IO.t
+
   (** Inspect the internals of Redis objects; returns the number of references of the value associated with the specified key. *)
   val object_refcount: connection -> string -> int option IO.t
 

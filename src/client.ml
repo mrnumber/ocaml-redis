@@ -506,6 +506,23 @@ module Make(IO : S.IO) = struct
     let command = ["RESTORE"; key; ttl; serialized_value] in
     send_request connection command >>= return_ok_status
 
+  let migrate connection
+      ?(copy=false) ?(replace=false)
+      host port key destination_db timeout =
+    let port = string_of_int port in
+    let destination_db = string_of_int destination_db in
+    let timeout = string_of_int timeout in
+    let copy = match copy with
+      | true -> "COPY"
+      | false -> "" in
+    let replace = match replace with
+      | true -> "REPLACE"
+      | false -> "" in
+    let base_command = ["MIGRATE"; host; port; key; destination_db; timeout] in
+    let args = List.filter (fun x -> String.length x > 0) [copy; replace] in
+    let command = List.concat [base_command; args] in
+    send_request connection command >>= return_ok_status
+
   let object_refcount connection key =
     let command = ["OBJECT"; "REFCOUNT"; key] in
     send_request connection command >>= function
