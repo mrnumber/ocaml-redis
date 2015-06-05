@@ -8,7 +8,7 @@ module Make(IO : S.IO)(Client : S.Client with module IO = IO)(Params : S.Cache_p
   let set r key data =
     let key = Params.cache_key key in
     let data = Params.string_of_data data in
-    Client.set r key data >>= fun () ->
+    Client.set r key data >>= fun _ ->
     IO.return (Utils.Option.may
       (fun cache_expiration ->
         IO.ignore_result (Client.expire r key cache_expiration)

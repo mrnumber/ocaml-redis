@@ -237,7 +237,10 @@ module type Client = sig
   val msetnx : connection -> (string * string) list -> bool IO.t
 
   (** Set key to hold the string value. *)
-  val set : connection -> string -> string -> unit IO.t
+  val set :
+    connection ->
+    ?ex:int -> ?px:int -> ?nx:bool -> ?xx:bool ->
+    string -> string -> bool IO.t
 
   (** Set key to hold the string value and set key to timeout after a given number of seconds. *)
   val setex : connection -> string -> int -> string -> unit IO.t

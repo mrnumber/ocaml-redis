@@ -179,6 +179,11 @@ module Make(IO : S.IO) = struct
     | `Status s when expected = s -> IO.return ()
     | x                           -> IO.fail (Unexpected x)
 
+  let return_ok_or_nil = function
+    | `Status "OK" -> IO.return true
+    | `Bulk None   -> IO.return false
+    | x            -> IO.fail (Unexpected x)
+
   let return_ok_status =
     return_expected_status "OK"
 
@@ -580,9 +585,27 @@ module Make(IO : S.IO) = struct
     let command = "MSETNX" :: (interleave items) in
     send_request connection command >>= return_bool
 
-  let set connection key value =
-    let command = [ "SET"; key; value ] in
-    send_request connection command >>= return_ok_status
+  let set connection ?ex:(ex=0) ?px:(px=0) ?nx:(nx=false) ?xx:(xx=false) key value =
+    match (nx, xx) with
+    | (true, true) ->
+      raise (Invalid_argument "SET command can contain only one of NX or XX options.")
+    | _ ->
+      let ex = match ex with
+        | 0 -> ""
+        | _ -> String.concat " " ["EX"; string_of_int ex] in
+      let px = match px with
+        | 0 -> ""
+        | _ -> String.concat " " ["PX"; string_of_int px] in
+      let nx = match nx with
+        | false -> ""
+        | true -> "NX" in
+      let xx = match xx with
+        | false -> ""
+        | true -> "XX" in
+      let base_command = [ "SET"; key; value; ] in
+      let args = List.filter (fun x -> String.length x > 0) [ex; px; nx; xx] in
+      let command = List.concat [base_command; args] in
+      send_request connection command >>= return_ok_or_nil
 
   let setex connection key seconds value =
     let seconds = string_of_int seconds in

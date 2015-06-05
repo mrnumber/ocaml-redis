@@ -86,9 +86,13 @@ module Make(IO : Redis.S.IO) = struct
 
     io_assert "Unexpected refcount for empty key" ((=) None) >>= fun () ->
     Client.set conn key value >>=
-    io_assert "Can't set key" ((=) ()) >>= fun () ->
+    io_assert "Can't set key" ((=) true) >>= fun () ->
+    Client.set conn ~xx:true key value >>=
+    io_assert "Can set xx key which is already set" ((=) true) >>= fun () ->
     Client.setnx conn key value >>=
     io_assert "Can setnx key which is already set" ((=) false) >>= fun () ->
+    Client.set conn ~nx:true key value >>=
+    io_assert "Can set nx key which is already set" ((=) false) >>= fun () ->
     Client.get conn key >>=
     io_assert "Key and value mismatch" ((=) (Some value)) >>= fun () ->
     Client.getset conn key value >>=
@@ -122,7 +126,7 @@ module Make(IO : Redis.S.IO) = struct
     Client.rename conn key key' >>=
     io_assert "Can't rename key" ((=) ()) >>= fun () ->
     Client.set conn key'' value >>=
-    io_assert "Can't set key''" ((=) ()) >>= fun () ->
+    io_assert "Can't set key''" ((=) true) >>= fun () ->
     Client.renamenx conn key' key'' >>=
     io_assert "Can renamenx key" ((=) false) >>= fun () ->
     Client.rename conn key' key >>=
@@ -159,7 +163,7 @@ module Make(IO : Redis.S.IO) = struct
     let key = redis_string_bucket () in
     let value = redis_string_bucket () in
     Client.set conn key value >>=
-    io_assert "Can't set key" ((=) ()) >>= fun () ->
+    io_assert "Can't set key" ((=) true) >>= fun () ->
     Client.dump conn key >>= function
     | None -> assert_failure "Can't dump value"
     | Some value_dump ->
@@ -173,7 +177,7 @@ module Make(IO : Redis.S.IO) = struct
     let key = redis_string_bucket () in
     let value = redis_string_bucket () in
     Client.set conn key value >>=
-    io_assert "Can't set key" ((=) ()) >>= fun () ->
+    io_assert "Can't set key" ((=) true) >>= fun () ->
     Client.setex conn key 1 value >>=
     io_assert "Can't setex key" ((=) ()) >>= fun () ->
     Client.psetex conn key 1000 value >>=
@@ -205,7 +209,7 @@ module Make(IO : Redis.S.IO) = struct
     let key = redis_string_bucket () in
     let value = redis_string_bucket () in
     Client.set conn key value >>=
-    io_assert "Can't set key" ((=) ()) >>= fun () ->
+    io_assert "Can't set key" ((=) true) >>= fun () ->
     let expiry = Unix.time () +. 1. in
     Client.expireat conn key expiry >>=
     io_assert "Can't set expiration timeout for key" ((=) true) >>= fun () ->
@@ -226,7 +230,7 @@ module Make(IO : Redis.S.IO) = struct
     let value = redis_string_bucket () in
     let string_key = redis_string_bucket () in
     Client.set conn string_key value >>=
-    io_assert "Can't set key" ((=) ()) >>= fun () ->
+    io_assert "Can't set key" ((=) true) >>= fun () ->
     let list_key = redis_string_bucket () in
     Client.lpush conn list_key value >>=
     io_assert "Can't push value to list" ((=) 1) >>= fun () ->
@@ -255,7 +259,7 @@ module Make(IO : Redis.S.IO) = struct
     let value = redis_integer_bucket () in
     let increment = redis_integer_bucket () in
     Client.set conn key (string_of_int value) >>=
-    io_assert "Can't set float value to key" ((=) ()) >>= fun () ->
+    io_assert "Can't set float value to key" ((=) true) >>= fun () ->
     Client.incrby conn key increment >>=
     io_assert "Can't increment value by integer" ((=) (value + increment)) >>= fun () ->
     Client.incr conn key >>=
@@ -280,9 +284,9 @@ module Make(IO : Redis.S.IO) = struct
     let value2 = "abcdef" in
     let value3 = "\x00\xff\xf0" in
     Client.set conn key1 value1 >>=
-    io_assert "Can't set value1 to key1" ((=) ()) >>= fun () ->
+    io_assert "Can't set value1 to key1" ((=) true) >>= fun () ->
     Client.set conn key2 value2 >>=
-    io_assert "Can't set value2 to key2" ((=) ()) >>= fun () ->
+    io_assert "Can't set value2 to key2" ((=) true) >>= fun () ->
     Client.bitop conn Client.AND dest [key1; key2] >>=
     io_assert "Can't execute BITOP AND key1 and key2" ((=) 6) >>= fun () ->
     Client.get conn dest >>=
@@ -292,7 +296,7 @@ module Make(IO : Redis.S.IO) = struct
     Client.get conn dest >>=
     io_assert "Got unexpected value from dest" ((=) (Some "\x99\x90\x90\x9d\x9e\x8d")) >>= fun () ->
     Client.set conn key1 value3 >>=
-    io_assert "Can't set value3 to key1" ((=) ()) >>= fun () ->
+    io_assert "Can't set value3 to key1" ((=) true) >>= fun () ->
     Client.bitpos conn key1 1 >>=
     io_assert "Got unexpected bit position" ((=) 8) >>= fun () ->
     Client.bitpos conn key1 1 ~first:0 >>=
@@ -306,7 +310,7 @@ module Make(IO : Redis.S.IO) = struct
     Client.getbit conn key1 0 >>=
     io_assert "Can't get bit" ((=) 1) >>= fun () ->
     Client.set conn key1 value1 >>=
-    io_assert "Can't set value1 to key1" ((=) ()) >>= fun () ->
+    io_assert "Can't set value1 to key1" ((=) true) >>= fun () ->
     Client.bitcount conn key1 >>=
     io_assert "Got unexpected bit count" ((=) 26) >>= fun () ->
     Client.bitcount conn key1 ~first:1 >>=
