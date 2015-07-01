@@ -303,52 +303,56 @@ module type Client = sig
 
   (** {6 List commands} *)
 
-  (* Blocks while all of the lists are empty. Set timeout to number of seconds OR 0 to block indefinitely. *)
+
+  (** Remove and get the first element in a list, or block until one is available *)
   val blpop : connection -> string list -> int -> (string * string) option IO.t
 
-  (* Same as BLPOP except pulling the last instead of first element. *)
+  (** Remove and get the last element in a list, or block until one is available *)
   val brpop : connection -> string list -> int -> (string * string) option IO.t
 
-  (* Blocking RPOPLPUSH.  Returns None on timeout. *)
+  (** Pop a value from a list, push it to another list and return it; or block until one is available *)
   val brpoplpush : connection -> string -> string -> int -> string option IO.t
 
-  (* Out of range or nonexistent key will return None. *)
+  (** Get an element from a list by its index *)
   val lindex : connection -> string -> int -> string option IO.t
 
-  (* Returns None if pivot isn't found, otherwise returns length of list after insert. *)
+  (** Insert an element before or after another element in a list *)
   val linsert : connection -> string -> [< `After | `Before ] -> string -> string -> int option IO.t
 
+  (** Get the length of a list *)
   val llen : connection -> string -> int IO.t
 
+  (** Remove and get the first element in a list *)
   val lpop : connection -> string -> string option IO.t
 
-  (* Returns length of list after operation. *)
+  (** Prepend one or multiple values to a list *)
   val lpush : connection -> string -> string -> int IO.t
 
-  (* Only push when list exists. Return length of list after operation. *)
+  (** Prepend a value to a list, only if the list exists *)
   val lpushx : connection -> string -> string -> int IO.t
 
-  (* Out of range arguments are handled by limiting to valid range. *)
+  (** Get a range of elements from a list *)
   val lrange : connection -> string -> int -> int -> string list IO.t
 
-  (* Returns number of elements removed. *)
+  (** Remove elements from a list *)
   val lrem : connection -> string -> int -> string -> int IO.t
 
-  (* Raises Error if out of range. *)
+  (** Set the value of an element in a list by its index *)
   val lset : connection -> string -> int -> string -> unit IO.t
 
-  (* Removes all but the specified range. Out of range arguments are handled by limiting to valid range. *)
+  (** Trim a list to the specified range *)
   val ltrim : connection -> string -> int -> int -> unit IO.t
 
+  (** Remove and get the last element in a list *)
   val rpop : connection -> string -> string option IO.t
 
-  (* Remove last element of source and insert as first element of destination. Returns the element moved
-     or None if source is empty. *)
+  (** Remove the last element in a list, prepend it to another list and return it *)
   val rpoplpush : connection -> string -> string -> string option IO.t
 
-  (* Returns length of list after operation. *)
+  (** Append one or multiple values to a list *)
   val rpush : connection -> string -> string -> int IO.t
 
+  (** Append a value to a list, only if the list exists *)
   val rpushx : connection -> string -> string -> int IO.t
 
   (** {6 Set commands} *)
