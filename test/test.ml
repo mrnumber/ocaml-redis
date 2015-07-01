@@ -334,6 +334,24 @@ module Make(IO : Redis.S.IO) = struct
     io_assert "Number of keys got with KEYS command is not equal to number of keys got with SCAN command"
       (fun scanned_keys -> List.length keys = List.length scanned_keys)
 
+  let test_case_list conn =
+    let key = redis_string_bucket () in
+    let value1 = redis_string_bucket () in
+    let value2 = redis_string_bucket () in
+    Client.lpush conn key value1 >>=
+    io_assert "Got unexpected list length" ((=) 1) >>= fun () ->
+    Client.rpush conn key value2 >>=
+    io_assert "Got unexpected list length" ((=) 2) >>= fun () ->
+    Client.lrange conn key 0 2 >>=
+    io_assert "Got unexpected list contents" ((=) [value1; value2]) >>= fun () ->
+    Client.del conn [key] >>= fun _ ->
+    let key = redis_string_bucket () in
+    Client.lpush conn key value1 >>=
+    io_assert "Got unexpected list length" ((=) 1) >>= fun () ->
+    Client.blpop conn [key] 1 >>=
+    io_assert "Got unexpected value" ((=) (Some (key, value1))) >>= fun () ->
+    Client.del conn [key] >>= fun _ -> IO.return ()
+
   let bracket test_case () =
     IO.run
       (setup () >>= fun conn ->
@@ -355,6 +373,7 @@ module Make(IO : Redis.S.IO) = struct
       "test_case_incr_decr" >:: (bracket test_case_incr_decr);
       "test_case_bit_operations" >:: (bracket test_case_bit_operations);
       "test_case_scan" >:: (bracket test_case_scan);
+      "test_case_list" >:: (bracket test_case_list);
     ] in
     Random.self_init ();
     run_test_tt_main suite
