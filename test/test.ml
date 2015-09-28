@@ -352,6 +352,51 @@ module Make(IO : Redis.S.IO) = struct
     io_assert "Got unexpected value" ((=) (Some (key, value1))) >>= fun () ->
     Client.del conn [key] >>= fun _ -> IO.return ()
 
+  let test_case_hash conn =
+    let key = redis_string_bucket () in
+    let field = redis_string_bucket () in
+    let value = redis_string_bucket () in
+    Client.hmset conn key [(field, value)] >>=
+    io_assert "Can not set multiple fields for hash" ((=) ()) >>= fun () ->
+    Client.hget conn key field >>=
+    io_assert "Got unexpected value of the field" ((=) (Some value)) >>= fun () ->
+    Client.hlen conn key >>=
+    io_assert "Got unexpected hash size" ((=) 1) >>= fun () ->
+    Client.hdel conn key field >>=
+    io_assert "Got unexpected result of field deletion" ((=) true) >>= fun () ->
+    let new_value = redis_integer_bucket () in
+    let new_value_s = string_of_int new_value in
+    Client.hset conn key field new_value_s >>=
+    io_assert "Can not set value for hash field" ((=) true) >>= fun _ ->
+    Client.hset conn key field new_value_s >>=
+    io_assert "Result of hash set is unexpected" ((=) false) >>= fun _ ->
+    Client.hincrbyfloat conn key field 1.0 >>=
+    io_assert "Got unexpected value" ((=) ((float_of_int new_value) +. 1.0))
+
+  let test_case_hscan conn =
+    let key = redis_string_bucket () in
+    let fields = redis_n_strings_bucket 10 in
+    let pairs = List.map (fun f -> (f, f)) fields in
+
+    Client.hmset conn key pairs >>=
+    io_assert "Can not set multiple fields for hash" ((=) ()) >>= fun () ->
+
+    let rec hscan_fields key cursor fields =
+      Client.hscan conn key cursor >>= fun (next_cursor, next_fields) ->
+      let next_fields = List.concat [fields; next_fields] in
+      if next_cursor == 0 then
+        IO.return next_fields
+      else
+        hscan_fields key next_cursor next_fields in
+    let hscan_all_fields () = hscan_fields key 0 [] in
+
+    Client.hkeys conn key >>= fun fields ->
+    hscan_all_fields () >>=
+    io_assert "Number of keys got with HKEYS command is not equal to number of keys got with HSCAN command"
+      (fun scanned_fields ->
+         List.length fields = List.length scanned_fields)
+
+
   let bracket test_case () =
     IO.run
       (setup () >>= fun conn ->
@@ -374,6 +419,8 @@ module Make(IO : Redis.S.IO) = struct
       "test_case_bit_operations" >:: (bracket test_case_bit_operations);
       "test_case_scan" >:: (bracket test_case_scan);
       "test_case_list" >:: (bracket test_case_list);
+      "test_case_hash" >:: (bracket test_case_hash);
+      "test_case_hscan" >:: (bracket test_case_hscan);
     ] in
     Random.self_init ();
     run_test_tt_main suite

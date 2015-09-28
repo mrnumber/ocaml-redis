@@ -280,6 +280,9 @@ module type Client = sig
   (** Increments the number stored at field in the hash stored at key by increment. *)
   val hincrby : connection -> string -> string -> int -> int IO.t
 
+  (** Increments the number stored at field in the hash stored at key by increment. *)
+  val hincrbyfloat : connection -> string -> string -> float -> float IO.t
+
   (** Returns all field names in the hash stored at key. *)
   val hkeys : connection -> string -> string list IO.t
 
@@ -298,11 +301,16 @@ module type Client = sig
   (** Sets field in the hash stored at key to value, only if field does not yet exist. *)
   val hsetnx : connection -> string -> string -> string -> bool IO.t
 
+  (** Get the length of the value of a hash field *)
+  val hstrlen : connection -> string -> string -> int IO.t
+
+  (** Incrementally iterate hash fields and associated values *)
+  val hscan : ?pattern:string -> ?count:int -> connection -> string -> int -> (int * (string * string) list) IO.t
+
   (** Returns all values in the hash stored at key. *)
   val hvals : connection -> string -> string list IO.t
 
   (** {6 List commands} *)
-
 
   (** Remove and get the first element in a list, or block until one is available *)
   val blpop : connection -> string list -> int -> (string * string) option IO.t

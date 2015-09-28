@@ -686,7 +686,6 @@ module Make(IO : S.IO) = struct
 
   (** Hash commands *)
 
-  (* Returns true if field exists and was deleted, false otherwise. *)
   let hdel connection key field =
     let command = [ "HDEL"; key; field ] in
     send_request connection command >>= return_bool
@@ -703,11 +702,15 @@ module Make(IO : S.IO) = struct
     let command = [ "HGETALL"; key ] in
     send_request connection command >>= return_key_value_multibulk
 
-  (* Raises error if field already contains a non-numeric value. *)
   let hincrby connection key field increment =
     let increment = string_of_int increment in
     let command = [ "HINCRBY"; key; field; increment ] in
     send_request connection command >>= return_int
+
+  let hincrbyfloat connection key field increment =
+    let increment = string_of_float increment in
+    let command = [ "HINCRBYFLOAT"; key; field; increment ] in
+    send_request connection command >>= return_float
 
   let hkeys connection key =
     let command = [ "HKEYS"; key ] in
@@ -725,15 +728,33 @@ module Make(IO : S.IO) = struct
     let command = "HMSET" :: key :: (interleave items) in
     send_request connection command >>= return_ok_status
 
-  (* Returns true if field was added, false otherwise. *)
   let hset connection key field value =
     let command = [ "HSET"; key; field; value ] in
     send_request connection command >>= return_bool
 
-  (* Returns true if field was set, false otherwise. *)
   let hsetnx connection key field value =
     let command = [ "HSETNX"; key; field; value ] in
     send_request connection command >>= return_bool
+
+  let hstrlen connection key field =
+    let command = [ "HSTRLEN"; key; field ] in
+    send_request connection command >>= return_int
+
+  let hscan ?(pattern="*") ?(count=10) connection key cursor =
+    let cursor = string_of_int cursor in
+    let count = string_of_int count in
+    let command = ["HSCAN"; key; cursor; "MATCH"; pattern; "COUNT"; count] in
+    send_request connection command >>= return_multibulk >>=
+      function
+      | `Bulk Some next_cursor :: `Multibulk keys :: [] ->
+         let next_cursor = int_of_string next_cursor in
+         let entries =
+           List.map (function
+               | `Bulk (Some s) -> s
+               | x -> IO.fail (Unexpected x); "") keys in
+         let pairs = Utils.List.pairs_of_list entries |> Utils.Option.default [] in
+         IO.return (next_cursor, pairs)
+      | _ -> IO.fail (Error "HSCAN returned unexpected result")
 
   let hvals connection key =
     let command = [ "HVALS"; key ] in
@@ -982,7 +1003,6 @@ module Make(IO : S.IO) = struct
     let scores = if withscores then ["withscores"] else [] in
     let command = "ZRANGEBYSCORE" :: key :: imin :: imax :: scores in
     send_request connection command >>= return_multibulk
-
 
   (* Remove one or more members from a sorted set. *)
   let zrem connection members =
