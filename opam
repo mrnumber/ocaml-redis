@@ -10,12 +10,15 @@ bug-reports: "https://github.com/0xffea/ocaml-redis/issues"
 license: "BSD3"
 tags: []
 dev-repo: "https://github.com/0xffea/ocaml-redis.git"
-build: [make "PREFIX=%{prefix}%"]
 install: [make "PREFIX=%{prefix}%" "install"]
+build: [
+  ["./configure" "--prefix" prefix "--%{lwt:enable}%-lwt"]
+  [make]
+]
 build-test: [
-  ["ocaml" "setup.ml" "-configure" "--enable-tests"]
-  ["ocaml" "setup.ml" "-build"]
-  ["ocaml" "setup.ml" "-test"]
+  ["./configure" "--prefix" prefix "--enable-tests"]
+  [make]
+  [make "test"]
 ]
 build-doc: ["ocaml" "setup.ml" "-doc"]
 remove: ["ocamlfind" "remove" "redis"]
@@ -23,6 +26,7 @@ depends: [
   "ocamlfind" {build}
   "uuidm"
   "re"
+  "lwt" {test}
   "ounit" {test}
 ]
 depopts: ["lwt"]
