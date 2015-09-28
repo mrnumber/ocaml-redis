@@ -1,0 +1,28 @@
+opam-version: "1.2"
+maintainer: "aluuu@husa.su"
+authors: [
+  "Mike Wells"
+  "David Höppner"
+  "Alexander Dinu"
+]
+homepage: "https://github.com/0xffea/ocaml-redis"
+bug-reports: "https://github.com/0xffea/ocaml-redis/issues"
+license: "BSD3"
+tags: []
+dev-repo: "https://github.com/0xffea/ocaml-redis.git"
+build: [make "PREFIX=%{prefix}%"]
+install: [make "PREFIX=%{prefix}%" "install"]
+build-test: [
+  ["ocaml" "setup.ml" "-configure" "--enable-tests"]
+  ["ocaml" "setup.ml" "-build"]
+  ["ocaml" "setup.ml" "-test"]
+]
+build-doc: ["ocaml" "setup.ml" "-doc"]
+remove: ["ocamlfind" "remove" "redis"]
+depends: [
+  "uuidm"
+  "re"
+  "ounit" {test}
+]
+depopts: ["lwt"]
+available: [ocaml-version >= "4.01.0"]
