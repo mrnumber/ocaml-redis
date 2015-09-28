@@ -4,6 +4,8 @@ DOCDIR = .gh-pages
 DOC_SYNC = $(DOCDIR)/redis.docdir
 DOC_LWT = $(DOCDIR)/redis_lwt.docdir
 
+LWT ?= $(shell if ocamlfind query lwt >/dev/null 2>&1; then echo --enable-lwt; fi)
+
 build: setup.data
 	$(SETUP) -build $(BUILDFLAGS)
 
@@ -32,10 +34,10 @@ distclean:
 	$(SETUP) -distclean $(DISTCLEANFLAGS)
 
 setup.data:
-	$(SETUP) -configure $(CONFIGUREFLAGS)
+	$(SETUP) -configure $(CONFIGUREFLAGS) $(LWT)
 
 configure:
-	$(SETUP) -configure $(CONFIGUREFLAGS)
+	$(SETUP) -configure $(CONFIGUREFLAGS) $(LWT)
 
 gh-pages: doc
 	git clone `git config --get remote.origin.url` .gh-pages --reference .

@@ -20,6 +20,7 @@ build-test: [
 build-doc: ["ocaml" "setup.ml" "-doc"]
 remove: ["ocamlfind" "remove" "redis"]
 depends: [
+  "ocamlfind" {build}
   "uuidm"
   "re"
   "ounit" {test}
