@@ -2,8 +2,8 @@ module IO = struct
   type 'a t = 'a Lwt.t
 
   type fd = Lwt_unix.file_descr
-  type in_channel = Lwt_chan.in_channel
-  type out_channel = Lwt_chan.out_channel
+  type in_channel = Lwt_io.input_channel
+  type out_channel = Lwt_io.output_channel
 
   type 'a stream = 'a Lwt_stream.t
   type stream_count = unit
@@ -28,12 +28,12 @@ module IO = struct
   let close = Lwt_unix.close
   let sleep = Lwt_unix.sleep
 
-  let in_channel_of_descr = Lwt_chan.in_channel_of_descr
-  let out_channel_of_descr = Lwt_chan.out_channel_of_descr
-  let input_char = Lwt_chan.input_char
-  let really_input = Lwt_chan.really_input
-  let output_string = Lwt_chan.output_string
-  let flush = Lwt_chan.flush
+  let in_channel_of_descr fd = Lwt_io.of_fd ~mode:Lwt_io.input fd
+  let out_channel_of_descr fd = Lwt_io.of_fd ~mode:Lwt_io.output fd
+  let input_char = Lwt_io.read_char
+  let really_input = Lwt_io.read_into_exactly
+  let output_string = Lwt_io.write
+  let flush = Lwt_io.flush
 
   let iter = Lwt_list.iter_p
   let iter_serial = Lwt_list.iter_s
