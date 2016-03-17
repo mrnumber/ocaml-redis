@@ -395,9 +395,10 @@ module Make(IO : S.IO) = struct
       function
       | `Bulk Some next_cursor :: `Multibulk keys :: [] ->
          let next_cursor = int_of_string next_cursor in
-         let keys = List.map (function
-                               | `Bulk (Some s) -> s
-                               | x -> IO.fail (Unexpected x); "") keys in
+         IO.map_serial (function
+             | `Bulk (Some s) -> IO.return s
+             | x -> IO.fail (Unexpected x) >>= fun () -> IO.return "") keys
+         >>= fun keys ->
          IO.return (next_cursor, keys)
       | _ -> IO.fail (Error "SCAN returned unexpected result")
 
@@ -748,10 +749,10 @@ module Make(IO : S.IO) = struct
       function
       | `Bulk Some next_cursor :: `Multibulk keys :: [] ->
          let next_cursor = int_of_string next_cursor in
-         let entries =
-           List.map (function
-               | `Bulk (Some s) -> s
-               | x -> IO.fail (Unexpected x); "") keys in
+         IO.map_serial (function
+             | `Bulk (Some s) -> IO.return s
+             | x -> IO.fail (Unexpected x) >>= fun () -> IO.return "") keys
+         >>= fun entries ->
          let pairs = Utils.List.pairs_of_list entries |> Utils.Option.default [] in
          IO.return (next_cursor, pairs)
       | _ -> IO.fail (Error "HSCAN returned unexpected result")
