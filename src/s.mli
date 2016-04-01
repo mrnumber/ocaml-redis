@@ -439,6 +439,9 @@ module type Client = sig
   (* Remove one or more members from a sorted set. *)
   val zrem : connection -> string list -> int IO.t
 
+  (* Returns the score of member in the sorted set. *)
+  val zscore : connection -> string -> string list -> string option IO.t
+
   (** {6 Transaction commands} *)
 
   (* Marks the start of a transaction block. Subsequent commands will be queued for atomic execution using EXEC. *)
