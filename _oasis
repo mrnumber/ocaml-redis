@@ -6,6 +6,7 @@ Authors:     Mike Wells
 License:     BSD-3-clause
 Plugins:     META (0.3), DevFiles (0.3)
 BuildTools:  ocamlbuild
+OCamlVersion:  >= 4.01.0
 AlphaFeatures: ocamlbuild_more_args
 XDevFilesEnableMakefile: false
 
