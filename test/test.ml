@@ -41,14 +41,9 @@ module Make(IO : Redis.S.IO) = struct
   let (>>=) = IO.(>>=)
   let (>>|) x f = x >>= fun x -> IO.return (f x)
 
-  let redis_open_connection =
-    let host = redis_test_host () in
-    let port = redis_test_port () in
-    Client.(connect {host; port})
-
-  let setup _ = redis_open_connection
-
-  let teardown _ = IO.return ()
+  let redis_spec : Client.connection_spec =
+    Client.({host=redis_test_host ();
+             port=redis_test_port () })
 
   let io_assert msg check result =
     IO.return (assert_bool msg (check result))
@@ -145,9 +140,9 @@ module Make(IO : Redis.S.IO) = struct
 
     let expected_values = List.map (fun x -> Some x) values in
     Client.mget conn keys >>| (fun actual_values ->
-      (List.iter2
-         (fun expected actual -> assert_bool "Got unexpected value" (expected = actual))
-         expected_values actual_values)) >>= fun () ->
+        (List.iter2
+           (fun expected actual -> assert_bool "Got unexpected value" (expected = actual))
+           expected_values actual_values)) >>= fun () ->
 
     let another_values = redis_n_strings_bucket 10 in
     let kv_pairs = List.combine keys another_values in
@@ -186,8 +181,8 @@ module Make(IO : Redis.S.IO) = struct
     io_assert "Can't check expiration timeout for key"
       (fun x -> List.mem x [Some 0; Some 1]) >>= fun () ->
     Client.pttl conn key >>| (function
-      | Some pttl -> assert_bool "Expiration timeout differs from setted" (0 <= pttl && pttl <= 1000)
-      | None -> assert_failure "Can't check expiration timeout for key")
+        | Some pttl -> assert_bool "Expiration timeout differs from setted" (0 <= pttl && pttl <= 1000)
+        | None -> assert_failure "Can't check expiration timeout for key")
     >>= fun () ->
     Client.expire conn key 1 >>=
     io_assert "Can't set expiration timeout for key" ((=) true) >>= fun () ->
@@ -197,8 +192,8 @@ module Make(IO : Redis.S.IO) = struct
     io_assert "Can't check expiration timeout for key"
       (fun x -> List.mem x [Some 0; Some 1]) >>= fun () ->
     Client.pttl conn key >>| (function
-      | Some pttl -> assert_bool "Expiration timeout differs from setted" (0 <= pttl && pttl <= 1000)
-      | None -> assert_failure "Can't check expiration timeout for key")
+        | Some pttl -> assert_bool "Expiration timeout differs from setted" (0 <= pttl && pttl <= 1000)
+        | None -> assert_failure "Can't check expiration timeout for key")
     >>= fun () ->
     Client.persist conn key >>=
     io_assert "Can't remove existing timeout on key" ((=) true)  >>= fun () ->
@@ -396,32 +391,35 @@ module Make(IO : Redis.S.IO) = struct
       (fun scanned_fields ->
          List.length fields = List.length scanned_fields)
 
+  let cleanup_keys conn =
+    Client.keys conn "ounit_*" >>= Client.del conn
 
   let bracket test_case () =
-    IO.run
-      (setup () >>= fun conn ->
-       test_case conn >>= fun () ->
-       teardown conn)
+    IO.run @@ Client.with_connection redis_spec test_case
+
+  let teardown () =
+    IO.run @@ Client.with_connection redis_spec cleanup_keys
 
   let test () =
     let suite = "Redis" >::: [
-      "test_case_ping" >:: (bracket test_case_ping);
-      "test_case_echo" >:: (bracket test_case_echo);
-      "test_case_info" >:: (bracket test_case_info);
-      "test_case_keys" >:: (bracket test_case_keys);
-      "test_case_multiple_keys" >:: (bracket test_case_multiple_keys);
-      "test_case_dump_restore" >:: (bracket test_case_dump_restore);
-      "test_case_expire" >:: (bracket test_case_expire);
-      "test_case_expireat" >:: (bracket test_case_expireat);
-      "test_case_type" >:: (bracket test_case_type);
-      "test_case_append" >:: (bracket test_case_append);
-      "test_case_incr_decr" >:: (bracket test_case_incr_decr);
-      "test_case_bit_operations" >:: (bracket test_case_bit_operations);
-      "test_case_scan" >:: (bracket test_case_scan);
-      "test_case_list" >:: (bracket test_case_list);
-      "test_case_hash" >:: (bracket test_case_hash);
-      "test_case_hscan" >:: (bracket test_case_hscan);
-    ] in
+        "test_case_ping" >:: (bracket test_case_ping);
+        "test_case_echo" >:: (bracket test_case_echo);
+        "test_case_info" >:: (bracket test_case_info);
+        "test_case_keys" >:: (bracket test_case_keys);
+        "test_case_multiple_keys" >:: (bracket test_case_multiple_keys);
+        "test_case_dump_restore" >:: (bracket test_case_dump_restore);
+        "test_case_expire" >:: (bracket test_case_expire);
+        "test_case_expireat" >:: (bracket test_case_expireat);
+        "test_case_type" >:: (bracket test_case_type);
+        "test_case_append" >:: (bracket test_case_append);
+        "test_case_incr_decr" >:: (bracket test_case_incr_decr);
+        "test_case_bit_operations" >:: (bracket test_case_bit_operations);
+        "test_case_scan" >:: (bracket test_case_scan);
+        "test_case_list" >:: (bracket test_case_list);
+        "test_case_hash" >:: (bracket test_case_hash);
+        "test_case_hscan" >:: (bracket test_case_hscan);
+      ] in
     Random.self_init ();
-    run_test_tt_main suite
+    run_test_tt_main suite;
+    teardown ()
 end
