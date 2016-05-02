@@ -67,3 +67,7 @@ true: annot, bin_annot
 <test/*.ml{,i,y}>: use_redis
 <test/*.ml{,i,y}>: use_redis_lwt
 # OASIS_STOP
+<src/*> and not "src/redis_lwt.ml": -package(lwt)
+<src/*> and not "src/redis_lwt.ml": -package(lwt.unix)
+<test/*> and not <test/test_lwt.{native,byte}>: -package(lwt)
+<test/*> and not <test/test_lwt.{native,byte}>: -package(lwt.unix)
