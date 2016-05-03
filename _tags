@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 7cc6295d226c0c73d04807395c7268c9)
+# DO NOT EDIT (digest: d0fb28b0e2d0b53a7e1b7e68335cd12e)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -22,47 +22,52 @@ true: annot, bin_annot
 "src/client.cmx": for-pack(Redis)
 "src/cache.cmx": for-pack(Redis)
 "src/mutex.cmx": for-pack(Redis)
-<src/*.ml{,i,y}>: pkg_re.str
-<src/*.ml{,i,y}>: pkg_uuidm
 # Library redis_lwt
 "src/redis_lwt.cmxs": use_redis_lwt
-<src/*.ml{,i,y}>: pkg_lwt
-<src/*.ml{,i,y}>: pkg_lwt.unix
+<src/*.ml{,i,y}>: package(lwt)
+<src/*.ml{,i,y}>: package(lwt.unix)
+<src/*.ml{,i,y}>: package(re.str)
+<src/*.ml{,i,y}>: package(uuidm)
+<src/*.ml{,i,y}>: use_redis
 # Executable redis_examples
-<examples/examples.{native,byte}>: pkg_core
-<examples/examples.{native,byte}>: pkg_lwt
-<examples/examples.{native,byte}>: pkg_lwt.unix
-<examples/examples.{native,byte}>: pkg_re.str
-<examples/examples.{native,byte}>: pkg_threads
-<examples/examples.{native,byte}>: pkg_uuidm
+<examples/examples.{native,byte}>: package(core)
+<examples/examples.{native,byte}>: package(lwt)
+<examples/examples.{native,byte}>: package(lwt.unix)
+<examples/examples.{native,byte}>: package(re.str)
+<examples/examples.{native,byte}>: package(threads)
+<examples/examples.{native,byte}>: package(uuidm)
 <examples/examples.{native,byte}>: use_redis
 <examples/examples.{native,byte}>: use_redis_lwt
-<examples/*.ml{,i,y}>: pkg_core
-<examples/*.ml{,i,y}>: pkg_lwt
-<examples/*.ml{,i,y}>: pkg_lwt.unix
-<examples/*.ml{,i,y}>: pkg_re.str
-<examples/*.ml{,i,y}>: pkg_threads
-<examples/*.ml{,i,y}>: pkg_uuidm
+<examples/*.ml{,i,y}>: package(core)
+<examples/*.ml{,i,y}>: package(lwt)
+<examples/*.ml{,i,y}>: package(lwt.unix)
+<examples/*.ml{,i,y}>: package(re.str)
+<examples/*.ml{,i,y}>: package(threads)
+<examples/*.ml{,i,y}>: package(uuidm)
 <examples/*.ml{,i,y}>: use_redis
 <examples/*.ml{,i,y}>: use_redis_lwt
 # Executable test
-"test/test_sync.byte": pkg_oUnit
-"test/test_sync.byte": pkg_re.str
-"test/test_sync.byte": pkg_uuidm
-"test/test_sync.byte": use_redis
+<test/test_sync.{native,byte}>: package(oUnit)
+<test/test_sync.{native,byte}>: package(re.str)
+<test/test_sync.{native,byte}>: package(uuidm)
+<test/test_sync.{native,byte}>: use_redis
 # Executable test_lwt
-"test/test_lwt.byte": pkg_lwt
-"test/test_lwt.byte": pkg_lwt.unix
-"test/test_lwt.byte": pkg_oUnit
-"test/test_lwt.byte": pkg_re.str
-"test/test_lwt.byte": pkg_uuidm
-"test/test_lwt.byte": use_redis
-"test/test_lwt.byte": use_redis_lwt
-<test/*.ml{,i,y}>: pkg_lwt
-<test/*.ml{,i,y}>: pkg_lwt.unix
-<test/*.ml{,i,y}>: pkg_oUnit
-<test/*.ml{,i,y}>: pkg_re.str
-<test/*.ml{,i,y}>: pkg_uuidm
+<test/test_lwt.{native,byte}>: package(lwt)
+<test/test_lwt.{native,byte}>: package(lwt.unix)
+<test/test_lwt.{native,byte}>: package(oUnit)
+<test/test_lwt.{native,byte}>: package(re.str)
+<test/test_lwt.{native,byte}>: package(uuidm)
+<test/test_lwt.{native,byte}>: use_redis
+<test/test_lwt.{native,byte}>: use_redis_lwt
+<test/*.ml{,i,y}>: package(lwt)
+<test/*.ml{,i,y}>: package(lwt.unix)
+<test/*.ml{,i,y}>: package(oUnit)
+<test/*.ml{,i,y}>: package(re.str)
+<test/*.ml{,i,y}>: package(uuidm)
 <test/*.ml{,i,y}>: use_redis
 <test/*.ml{,i,y}>: use_redis_lwt
 # OASIS_STOP
+<src/*> and not "src/redis_lwt.ml": -package(lwt)
+<src/*> and not "src/redis_lwt.ml": -package(lwt.unix)
+<test/*> and not <test/test_lwt.{native,byte}>: -package(lwt)
+<test/*> and not <test/test_lwt.{native,byte}>: -package(lwt.unix)

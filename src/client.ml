@@ -333,8 +333,10 @@ module Make(IO : S.IO) = struct
     let command = [ "PING" ] in
     IO.try_bind
       (fun () -> send_request connection command)
-      (function `Status "PONG" -> IO.return true | _ -> IO.return false)
-      (fun _ -> IO.return false)
+      (function `Status "PONG" -> IO.return true
+              | _ -> IO.return false)
+
+      (fun e -> IO.fail e)
 
   let quit connection =
     let command = [ "QUIT" ] in
