@@ -14,20 +14,27 @@ Library redis
   Path: src
   Findlibname: redis
   Pack: true
-  Modules: Redis_sync, S, Utils, Client, Cache, Mutex
+  Modules: S, Utils, Client, Cache, Mutex
   BuildDepends: re.str, uuidm
 
 Flag lwt
   Description: Build the Lwt client
   Default: false
 
+Library redis_sync
+  Path: src_sync
+  FindlibParent: redis
+  Findlibname: sync
+  Modules: Redis_sync
+  BuildDepends: redis
+
 Library redis_lwt
-  Path: src
+  Path: src_lwt
   Build$: flag(lwt)
   Install$: flag(lwt)
   FindlibParent: redis
   Findlibname: lwt
-  Modules: Redis_lwt, S, Utils, Client, Cache, Mutex
+  Modules: Redis_lwt
   BuildDepends: redis, lwt.unix, lwt
 
 Flag examples
@@ -46,7 +53,7 @@ Executable test
   Path: test
   CompiledObject:     best
   MainIs: test_sync.ml
-  BuildDepends: oUnit, redis
+  BuildDepends: oUnit, redis, redis.sync
   Install: false
   Build$: flag(tests)
 
