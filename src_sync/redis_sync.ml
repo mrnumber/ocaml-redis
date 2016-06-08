@@ -50,6 +50,6 @@ module IO = struct
   let stream_next = Stream.next
 end
 
-module Client = Client.Make(IO)
-module Cache = Cache.Make(IO)(Client)
-module Mutex = Mutex.Make(IO)(Client)
+module Client = Redis.Client.Make(IO)
+module Cache = Redis.Cache.Make(IO)(Client)
+module Mutex = Redis.Mutex.Make(IO)(Client)
