@@ -75,5 +75,3 @@ true: annot, bin_annot
 <test/*.ml{,i,y}>: use_redis
 <test/*.ml{,i,y}>: use_redis_lwt
 # OASIS_STOP
-<test/*> and not <test/test_lwt.ml{,i,y}>: -package(lwt)
-<test/*> and not <test/test_lwt.ml{,i,y}>: -package(lwt.unix)
