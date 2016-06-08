@@ -76,13 +76,22 @@ Test test_lwt
 Document redis
   Title: API reference for ocaml-redis
   Type: ocamlbuild (0.4)
-  BuildTools: ocamldoc
+  BuildTools: ocamlbuild, ocamldoc
   XOCamlbuildPath: src
-  XOCamlbuildLibraries: redis
+  XOCamlbuildModules: S, Client, Cache, Mutex
+
+Document redis_sync
+  Title: API reference for ocaml-redis
+  Type: ocamlbuild (0.4)
+  BuildTools: ocamlbuild, ocamldoc
+  XOCamlbuildPath: src_sync
+  XOCamlbuildExtraArgs: "-docflags '-I src'"
+  XOCamlbuildModules: Redis_sync
 
 Document redis_lwt
-  Title: API reference for ocaml-redis (lwt backend)
+  Title: API reference for ocaml-redis
   Type: ocamlbuild (0.4)
-  BuildTools: ocamldoc
-  XOCamlbuildPath: src
-  XOCamlbuildLibraries: redis.lwt
+  BuildTools: ocamlbuild, ocamldoc
+  XOCamlbuildPath: src_lwt
+  XOCamlbuildExtraArgs: "-docflags '-I src'"
+  XOCamlbuildModules: Redis_lwt
