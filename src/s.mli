@@ -363,6 +363,17 @@ module type Client = sig
   (** Append a value to a list, only if the list exists *)
   val rpushx : connection -> string -> string -> int IO.t
 
+  (** {6 HyperLogLog commands} *)
+
+  (** Adds values to the HyperLogLog data structure. *)
+  val pfadd : connection -> string -> string list -> bool IO.t
+
+  (** Returns the approximated cardinality of the union of the HyperLogLogs passed. *)
+  val pfcount : connection -> string list -> int IO.t
+
+  (** Merge multiple HyperLogLog values into an unique value that will approximate the cardinality of the union of the observed Sets of the source HyperLogLog structures. *)
+  val pfmerge : connection -> string list -> unit IO.t
+
   (** {6 Set commands} *)
 
   (* Returns true if member was added, false otherwise. *)

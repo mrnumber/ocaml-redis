@@ -868,6 +868,20 @@ module Make(IO : S.IO) = struct
     let command = [ "RPUSHX"; key; value ] in
     send_request connection command >>= return_int
 
+  (** HyperLogLog commands *)
+
+  let pfadd connection key values =
+    let command = [ "PFADD"; key ] @ values in
+    send_request connection command >>= return_bool
+
+  let pfcount connection keys =
+    let command = [ "PFCOUNT" ] @ keys in
+    send_request connection command >>= return_int
+
+  let pfmerge connection keys =
+    let command = [ "PFMERGE" ] @ keys in
+    send_request connection command >>= return_ok_status
+
   (** Set commands *)
 
   (* Returns true if member was added, false otherwise. *)

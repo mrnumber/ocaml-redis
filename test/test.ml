@@ -368,6 +368,22 @@ module Make(IO : Redis.S.IO) = struct
     Client.hincrbyfloat conn key field 1.0 >>=
     io_assert "Got unexpected value" ((=) ((float_of_int new_value) +. 1.0))
 
+  let test_case_hyper_log_log conn =
+    let key1 = redis_string_bucket () in
+    let key2 = redis_string_bucket () in
+    Client.pfadd conn key1 ["a"; "b"; "c"] >>=
+    io_assert "Can not add items to hyperloglog" ((=) true) >>= fun () ->
+    Client.pfadd conn key1 ["a"; "b"; "c"] >>=
+    io_assert "Can not add items to hyperloglog" ((=) false) >>= fun () ->
+    Client.pfcount conn [key1] >>=
+    io_assert "Got wrong items count" ((=) 3) >>= fun () ->
+    Client.pfadd conn key2 ["d"; "e"; "f"] >>=
+    io_assert "Can not add items to hyperloglog" ((=) true) >>= fun () ->
+    Client.pfcount conn [key1; key2] >>=
+    io_assert "Got wrong items count" ((=) 6) >>= fun () ->
+    Client.pfmerge conn [key1; key2] >>=
+    io_assert "Got wrong items count" ((=) ())
+
   let test_case_hscan conn =
     let key = redis_string_bucket () in
     let fields = redis_n_strings_bucket 10 in
@@ -418,6 +434,7 @@ module Make(IO : Redis.S.IO) = struct
         "test_case_list" >:: (bracket test_case_list);
         "test_case_hash" >:: (bracket test_case_hash);
         "test_case_hscan" >:: (bracket test_case_hscan);
+        "test_case_hyper_log_log" >:: (bracket test_case_hyper_log_log);
       ] in
     Random.self_init ();
     run_test_tt_main suite;
