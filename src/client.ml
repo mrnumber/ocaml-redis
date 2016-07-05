@@ -205,6 +205,10 @@ module Make(IO : S.IO) = struct
     | `Bulk (Some str) -> IO.return (float_of_string str)
     | x        -> IO.fail (Unexpected x)
 
+  let return_float_option = function
+    | `Bulk None -> IO.return None
+    | x -> return_float x >>= fun f -> IO.return (Some f)
+
   let return_multibulk = function
     | `Multibulk m -> IO.return m
     | x            -> IO.fail (Unexpected x)
@@ -995,15 +999,15 @@ module Make(IO : S.IO) = struct
 
   (* Add one or more members to a sorted set, or update its score if it already exists. *)
   let zadd connection key values =
-    let f acc (s, v) = (string_of_int s) :: v :: acc in
+    let f acc (s, v) = (string_of_float s) :: v :: acc in
     let values = List.fold_left f [] values in
     let command = "ZADD" :: key :: values in
     send_request connection command >>= return_int
 
   (* Returns the score of member in the sorted set. *)
   let zscore connection key member =
-    let command = "ZSCORE" :: key :: member in
-    send_request connection command >>= return_bulk
+    let command = "ZSCORE" :: key :: member :: [] in
+    send_request connection command >>= return_float_option
 
   (* Return a range of members in a sorted set, by index. *)
   let zrange connection ?(withscores=false) key start stop =
@@ -1013,17 +1017,45 @@ module Make(IO : S.IO) = struct
     let command = "ZRANGE" :: key :: istart :: istop :: scores in
     send_request connection command >>= return_multibulk
 
-  (* Return a range of members in a sorted set, by score. *)
-  let zrangebyscore connection ?(withscores=false) key min max =
-    let imin = string_of_int min in
-    let imax = string_of_int max in
+  (* Return a range of members in a sorted set, by index. *)
+  let zrevrange connection ?(withscores=false) key start stop =
+    let istart = string_of_int start in
+    let istop = string_of_int stop in
     let scores = if withscores then ["withscores"] else [] in
+    let command = "ZREVRANGE" :: key :: istart :: istop :: scores in
+    send_request connection command >>= return_multibulk
+
+  (* Return a range of members in a sorted set, by score. *)
+  let zrangebyscore connection ?(withscores=false) ?limit key min max =
+    let imin = string_of_float min in
+    let imax = string_of_float max in
+    let limit = match limit with
+      | None -> []
+      | Some (offset, count) -> [ "LIMIT";
+                                  string_of_int offset;
+                                  string_of_int count; ]
+    in
+    let scores = if withscores then "withscores" :: limit else limit in
     let command = "ZRANGEBYSCORE" :: key :: imin :: imax :: scores in
     send_request connection command >>= return_multibulk
 
+  (* Return a range of members in a sorted set, by score. *)
+  let zrevrangebyscore connection ?(withscores=false) ?limit key min max =
+    let imin = string_of_float min in
+    let imax = string_of_float max in
+    let limit = match limit with
+      | None -> []
+      | Some (offset, count) -> [ "LIMIT";
+                                  string_of_int offset;
+                                  string_of_int count; ]
+    in
+    let scores = if withscores then "withscores" :: limit else limit in
+    let command = "ZREVRANGEBYSCORE" :: key :: imin :: imax :: scores in
+    send_request connection command >>= return_multibulk
+
   (* Remove one or more members from a sorted set. *)
-  let zrem connection members =
-    let command = "ZREM" :: members in
+  let zrem connection key members =
+    let command = "ZREM" :: key :: members in
     send_request connection command >>= return_int
 
   (** Transaction commands *)
