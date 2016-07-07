@@ -430,7 +430,9 @@ module Make(IO : Redis.S.IO) = struct
     io_assert "item was removed" ((=) None)
 
   let cleanup_keys conn =
-    Client.keys conn "ounit_*" >>= Client.del conn
+    Client.keys conn "ounit_*" >>= fun keys ->
+    Client.del conn keys >>= fun _ ->
+    IO.return ()
 
   let bracket test_case () =
     IO.run @@ Client.with_connection redis_spec test_case
@@ -460,6 +462,20 @@ module Make(IO : Redis.S.IO) = struct
         "test_case_sorted_set" >:: (bracket test_case_sorted_set);
       ] in
     Random.self_init ();
-    run_test_tt_main suite;
-    teardown ()
+    let res = run_test_tt_main suite in
+    teardown ();
+    let rec rc_of =
+      let open OUnit in
+      function
+      | [] ->
+         0
+      | RSuccess _ :: t
+      | RSkip _ :: t ->
+         rc_of t
+      | RFailure _ :: _
+      | RError   _ :: _
+      | RTodo    _ :: _ ->
+         1
+    in
+    rc_of res
 end
