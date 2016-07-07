@@ -440,7 +440,7 @@ module type Client = sig
 
   (* Add one or more members to a sorted set, or update its score if it already exists. *)
   val zadd : connection ->
-             ?x:[< `NX | `XX ] -> ?ch:bool -> ?incr:bool ->
+             ?x:[< `NX | `XX ] -> ?ch:bool ->
              string -> (float * string) list -> int IO.t
 
   (* Return a range of members in a sorted set, by index. *)
@@ -457,6 +457,9 @@ module type Client = sig
 
   (* Remove one or more members from a sorted set. *)
   val zrem : connection -> string -> string list -> int IO.t
+
+  (* Increment the score of a member in the sorted set *)
+  val zincrby : connection -> string -> float -> string -> float IO.t
 
   (* Returns the score of a member in the sorted set. *)
   val zscore : connection -> string -> string -> float option IO.t

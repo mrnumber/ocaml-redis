@@ -998,19 +998,14 @@ module Make(IO : S.IO) = struct
   (** Sorted Set commands *)
 
   (* Add one or more members to a sorted set, or update its score if it already exists. *)
-  let zadd connection ?x ?(ch = false) ?(incr = false) key values =
+  let zadd connection ?x ?(ch = false) key values =
     let f acc (s, v) = (string_of_float s) :: v :: acc in
     let values = List.fold_left f [] values in
     let command =
       let cmd =
-        if incr
-        then "INCR" :: values
-        else values
-      in
-      let cmd =
         if ch
-        then "CH" :: cmd
-        else cmd
+        then "CH" :: values
+        else values
       in
       let cmd =
         match x with
@@ -1026,6 +1021,10 @@ module Make(IO : S.IO) = struct
       "ZADD" :: key :: cmd
     in
     send_request connection command >>= return_int
+
+  let zincrby connection key score member =
+    let command = [ "ZINCRBY"; key; string_of_float score; member ] in
+    send_request connection command >>= return_float
 
   (* Returns the score of member in the sorted set. *)
   let zscore connection key member =

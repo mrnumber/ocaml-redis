@@ -417,7 +417,7 @@ module Make(IO : Redis.S.IO) = struct
     io_assert "no elements were added" ((=) 0) >>= fun () ->
     Client.zadd conn key ~ch:true [ 3., "obj1"; 3., "obj2"; ] >>=
     io_assert "2 elements were changed" ((=) 2) >>= fun () ->
-    Client.zadd conn key ~incr:true [ 2., "obj1"; ] >>= fun _ ->
+    Client.zincrby conn key 2. "obj1" >>= fun _ ->
     Client.zscore conn key "obj1" >>=
     io_assert "score of obj1 should be 5 now" ((=) (Some 5.)) >>= fun () ->
     Client.zrange conn key 0 100 >>= fun _ ->
