@@ -435,7 +435,27 @@ module Make(IO : Redis.S.IO) = struct
     IO.return ()
 
   let bracket test_case () =
-    IO.run @@ Client.with_connection redis_spec test_case
+    try
+      IO.run @@ Client.with_connection redis_spec test_case
+    with (Client.Unexpected reply as exn) ->
+      let rec to_string = function
+        | `Status s -> Printf.sprintf "(Status %s)" s
+        | `Error  s -> Printf.sprintf "(Error %s)" s
+        | `Int i -> Printf.sprintf "(Int %i)" i
+        | `Int64 i -> Printf.sprintf "(Int64 %Li)" i
+        | `Bulk None -> "(Bulk None)"
+        | `Bulk (Some s) -> Printf.sprintf "(Bulk (Some %s))" s
+        | `Multibulk replies ->
+           let x =
+             List.map
+               to_string
+               replies
+             |> String.concat "; "
+           in
+           Printf.sprintf "Multibulk [ %s; ]" x
+      in
+      Printf.printf "Got unexpected reply: %s" (to_string reply);
+      raise exn
 
   let teardown () =
     IO.run @@ Client.with_connection redis_spec cleanup_keys
