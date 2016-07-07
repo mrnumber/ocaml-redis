@@ -33,6 +33,16 @@ let redis_n_strings_bucket n =
     if n = 0 then acc else helper (redis_string_bucket () :: acc) (n - 1) in
   helper [] n
 
+let rec test_exit_code = function
+  | [] ->
+    0
+  | RSuccess _ :: t
+  | RSkip _ :: t ->
+    test_exit_code t
+  | RFailure _ :: _
+  | RError   _ :: _
+  | RTodo    _ :: _ ->
+    1
 
 module Make(IO : Redis.S.IO) = struct
 
@@ -484,18 +494,5 @@ module Make(IO : Redis.S.IO) = struct
     Random.self_init ();
     let res = run_test_tt_main suite in
     teardown ();
-    let rec rc_of =
-      let open OUnit in
-      function
-      | [] ->
-         0
-      | RSuccess _ :: t
-      | RSkip _ :: t ->
-         rc_of t
-      | RFailure _ :: _
-      | RError   _ :: _
-      | RTodo    _ :: _ ->
-         1
-    in
-    rc_of res
+    Pervasives.exit @@ test_exit_code res
 end
