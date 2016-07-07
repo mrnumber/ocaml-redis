@@ -439,19 +439,30 @@ module type Client = sig
   (** {6 Sorted set commands} *)
 
   (* Add one or more members to a sorted set, or update its score if it already exists. *)
-  val zadd : connection -> string -> (int * string) list -> int IO.t
+  val zadd : connection ->
+             ?x:[< `NX | `XX ] -> ?ch:bool ->
+             string -> (float * string) list -> int IO.t
 
   (* Return a range of members in a sorted set, by index. *)
   val zrange : connection -> ?withscores:bool -> string -> int -> int -> reply list IO.t
 
+  (* Return a reversed range of members in a sorted set, by index. *)
+  val zrevrange : connection -> ?withscores:bool -> string -> int -> int -> reply list IO.t
+
   (* Return a range of members in a sorted set, by score. *)
-  val zrangebyscore : connection -> ?withscores:bool -> string -> int -> int -> reply list IO.t
+  val zrangebyscore : connection -> ?withscores:bool -> ?limit:(int * int) -> string -> float -> float -> reply list IO.t
+
+  (* Return a range of members in a sorted set, by score. *)
+  val zrevrangebyscore : connection -> ?withscores:bool -> ?limit:(int * int) -> string -> float -> float -> reply list IO.t
 
   (* Remove one or more members from a sorted set. *)
-  val zrem : connection -> string list -> int IO.t
+  val zrem : connection -> string -> string list -> int IO.t
 
-  (* Returns the score of member in the sorted set. *)
-  val zscore : connection -> string -> string list -> string option IO.t
+  (* Increment the score of a member in the sorted set *)
+  val zincrby : connection -> string -> float -> string -> float IO.t
+
+  (* Returns the score of a member in the sorted set. *)
+  val zscore : connection -> string -> string -> float option IO.t
 
   (** {6 Transaction commands} *)
 
