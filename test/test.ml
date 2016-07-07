@@ -407,6 +407,28 @@ module Make(IO : Redis.S.IO) = struct
       (fun scanned_fields ->
          List.length fields = List.length scanned_fields)
 
+  let test_case_sorted_set conn =
+    let key = redis_string_bucket () in
+    Client.zadd conn key [ 1.4, "obj1"; 1.6, "obj2"; ] >>=
+    io_assert "added 2 items to set" ((=) 2) >>= fun () ->
+    Client.zadd conn key ~x:`NX [ 1.4, "obj1"; 1.6, "obj2"; ] >>=
+    io_assert "no elements were added" ((=) 0) >>= fun () ->
+    Client.zadd conn key ~x:`XX [ 1.4, "obj1"; 1.6, "obj2"; ] >>=
+    io_assert "no elements were added" ((=) 0) >>= fun () ->
+    Client.zadd conn key ~ch:true [ 3., "obj1"; 3., "obj2"; ] >>=
+    io_assert "2 elements were changed" ((=) 2) >>= fun () ->
+    Client.zadd conn key ~incr:true [ 2., "obj1"; ] >>= fun _ ->
+    Client.zscore conn key "obj1" >>=
+    io_assert "score of obj1 should be 5 now" ((=) (Some 5.)) >>= fun () ->
+    Client.zrange conn key 0 100 >>= fun _ ->
+    Client.zrevrange conn key 0 100 >>= fun _ ->
+    Client.zrangebyscore conn key 0. 100. >>= fun _ ->
+    Client.zrevrangebyscore conn key 0. 100. >>= fun _ ->
+    Client.zrem conn key [ "obj1"; "non_existing_key"; ] >>=
+    io_assert "removed 1 item from set" ((=) 1) >>= fun () ->
+    Client.zscore conn key "obj1" >>=
+    io_assert "item was removed" ((=) None)
+
   let cleanup_keys conn =
     Client.keys conn "ounit_*" >>= Client.del conn
 
@@ -435,6 +457,7 @@ module Make(IO : Redis.S.IO) = struct
         "test_case_hash" >:: (bracket test_case_hash);
         "test_case_hscan" >:: (bracket test_case_hscan);
         "test_case_hyper_log_log" >:: (bracket test_case_hyper_log_log);
+        "test_case_sorted_set" >:: (bracket test_case_sorted_set);
       ] in
     Random.self_init ();
     run_test_tt_main suite;
