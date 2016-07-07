@@ -439,7 +439,9 @@ module type Client = sig
   (** {6 Sorted set commands} *)
 
   (* Add one or more members to a sorted set, or update its score if it already exists. *)
-  val zadd : connection -> string -> (float * string) list -> int IO.t
+  val zadd : connection ->
+             ?x:[< `NX | `XX ] -> ?ch:bool -> ?incr:bool ->
+             string -> (float * string) list -> int IO.t
 
   (* Return a range of members in a sorted set, by index. *)
   val zrange : connection -> ?withscores:bool -> string -> int -> int -> reply list IO.t
