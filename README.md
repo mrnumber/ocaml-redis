@@ -2,6 +2,9 @@
 
 Ocaml bindings for [Redis](http://redis.io/). API documentation can be found [here](http://0xffea.github.io/ocaml-redis/).
 
+Changelog can be found in [CHANGES.md](/CHANGES.md) file.
+
+
 ## Dependencies
 
 * [Lwt](http://ocsigen.org/lwt/install) (optional)
