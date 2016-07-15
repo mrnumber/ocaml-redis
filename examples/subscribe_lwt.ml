@@ -1,5 +1,4 @@
 open Core.Std
-open Redis
 open Lwt
 
 let subscribe_lwt host port =

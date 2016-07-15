@@ -1,5 +1,5 @@
 (* OASIS_START *)
-(* DO NOT EDIT (digest: e1affe68e0d9d845dfa4b4b0425c3341) *)
+(* DO NOT EDIT (digest: 7ac8edda0e320f49111d69e991624c05) *)
 module OASISGettext = struct
 (* # 22 "src/oasis/OASISGettext.ml" *)
 
@@ -780,7 +780,7 @@ let package_default =
           ("test", ["src"; "src_lwt"; "src_sync"]);
           ("src_sync", ["src"]);
           ("src_lwt", ["src"]);
-          ("examples", ["src"; "src_lwt"])
+          ("examples", ["src"; "src_lwt"; "src_sync"])
        ]
   }
   ;;

@@ -1,5 +1,4 @@
 open Core.Std
-open Redis
 
 let subscribe_sync host port =
   let open Redis_sync.Client in
