@@ -1,6 +1,6 @@
 OASISFormat: 0.4
 Name:        redis
-Version:     0.3.0
+Version:     0.3.1
 Synopsis:    Ocaml bindings for Redis
 Authors:     Mike Wells
 License:     BSD-3-clause
