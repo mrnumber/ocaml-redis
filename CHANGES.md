@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+Expose stream type for both lwt and sync backends (see issue #32, thanks @acs1)
+
 ## 0.3.0
 
 Now package contains 3 modules: `Redis`, `Redis_lwt` and `Redis_sync`.
