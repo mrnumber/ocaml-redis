@@ -47,7 +47,7 @@ Executable redis_examples
   Build$: flag(examples)
   Install: false
   CompiledObject: best
-  BuildDepends: threads, core, redis, redis.lwt, lwt.unix, lwt
+  BuildDepends: threads, core, redis, redis.sync, redis.lwt, lwt.unix, lwt
 
 Executable test
   Path: test
