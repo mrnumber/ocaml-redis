@@ -1,4 +1,4 @@
-module IO : Redis.S.IO with type 'a t = 'a Lwt.t
+module IO : Redis.S.IO with type 'a t = 'a Lwt.t and type 'a stream = 'a Lwt_stream.t
 
 module Client : Redis.S.Client with module IO = IO
 
