@@ -615,19 +615,19 @@ module Make(IO : S.IO) = struct
       raise (Invalid_argument "SET command can contain only one of NX or XX options.")
     | _ ->
       let ex = match ex with
-        | 0 -> ""
-        | _ -> String.concat " " ["EX"; string_of_int ex] in
+        | 0 -> []
+        | _ -> ["EX"; string_of_int ex] in
       let px = match px with
-        | 0 -> ""
-        | _ -> String.concat " " ["PX"; string_of_int px] in
+        | 0 -> []
+        | _ -> ["PX"; string_of_int px] in
       let nx = match nx with
-        | false -> ""
-        | true -> "NX" in
+        | false -> []
+        | true -> ["NX"] in
       let xx = match xx with
-        | false -> ""
-        | true -> "XX" in
+        | false -> []
+        | true -> ["XX"] in
       let base_command = [ "SET"; key; value; ] in
-      let args = List.filter (fun x -> String.length x > 0) [ex; px; nx; xx] in
+      let args = List.concat [ex; px; nx; xx] in
       let command = List.concat [base_command; args] in
       send_request connection command >>= return_ok_or_nil
 
