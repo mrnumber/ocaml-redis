@@ -41,6 +41,18 @@ end
 module type Client = sig
   module IO : IO
 
+  module StringBound : sig
+    type t = NegInfinity | PosInfinity | Exclusive of string | Inclusive of string
+
+    val to_string : t -> string
+  end
+
+  module FloatBound : sig
+    type t = NegInfinity | PosInfinity | Exclusive of float | Inclusive of float
+
+    val to_string : t -> string
+  end
+
   (** {6 Types and exceptions } *)
 
   type reply = [
@@ -74,7 +86,6 @@ module type Client = sig
 
   (** Possible BITOP operations *)
   type bit_operation = AND | OR | XOR | NOT
-
 
   (** {6 Connection handling } *)
 
@@ -450,19 +461,49 @@ module type Client = sig
   val zrevrange : connection -> ?withscores:bool -> string -> int -> int -> reply list IO.t
 
   (* Return a range of members in a sorted set, by score. *)
-  val zrangebyscore : connection -> ?withscores:bool -> ?limit:(int * int) -> string -> float -> float -> reply list IO.t
+  val zrangebyscore : connection -> ?withscores:bool -> ?limit:(int * int) -> string -> FloatBound.t -> FloatBound.t -> reply list IO.t
+
+  (* Return a range of members in a sorted set, by lexicographical range. *)
+  val zrangebylex : connection -> ?limit:(int * int) -> string -> StringBound.t -> StringBound.t -> reply list IO.t
 
   (* Return a range of members in a sorted set, by score. *)
-  val zrevrangebyscore : connection -> ?withscores:bool -> ?limit:(int * int) -> string -> float -> float -> reply list IO.t
+  val zrevrangebyscore : connection -> ?withscores:bool -> ?limit:(int * int) -> string -> FloatBound.t -> FloatBound.t -> reply list IO.t
+
+  (* Return a range of members in a sorted set, by lexicographical range. *)
+  val zrevrangebylex : connection -> ?limit:(int * int) -> string -> StringBound.t -> StringBound.t -> reply list IO.t
 
   (* Remove one or more members from a sorted set. *)
   val zrem : connection -> string -> string list -> int IO.t
+
+  (* Remove all members in a sorted set between the given lexicographical range. *)
+  val zremrangebylex : connection -> string -> StringBound.t -> StringBound.t -> int IO.t
+
+  (* Remove all members in a sorted set between the given score range. *)
+  val zremrangebyscore : connection -> string -> FloatBound.t -> FloatBound.t -> int IO.t
+
+  (* Remove all members in a sorted set between the given rank range. *)
+  val zremrangebyrank : connection -> string -> int -> int -> int IO.t
+
+  (* Returns the sorted set cardinality (number of elements) of the sorted set stored at key. *)
+  val zcard : connection -> string  -> int IO.t
 
   (* Increment the score of a member in the sorted set *)
   val zincrby : connection -> string -> float -> string -> float IO.t
 
   (* Returns the score of a member in the sorted set. *)
   val zscore : connection -> string -> string -> float option IO.t
+
+  (* Returns the number of elements in the sorted set at key with a score between min and max. *)
+  val zcount : connection -> string -> FloatBound.t -> FloatBound.t -> int IO.t
+
+  (* Returns the number of members in a sorted set between a given lexicographical range. *)
+  val zlexcount : connection -> string -> StringBound.t -> StringBound.t -> int IO.t
+
+  (* Returns the rank of member in the sorted set stored at key. *)
+  val zrank : connection -> string -> string -> int option IO.t
+
+  (* Returns the reversed rank of member in the sorted set stored at key. *)
+  val zrevrank : connection -> string -> string -> int option IO.t
 
   (** {6 Transaction commands} *)
 

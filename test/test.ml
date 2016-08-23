@@ -436,12 +436,54 @@ module Make(IO : Redis.S.IO) = struct
     io_assert "score of obj1 should be 5 now" ((=) (Some 5.)) >>= fun () ->
     Client.zrange conn key 0 100 >>= fun _ ->
     Client.zrevrange conn key 0 100 >>= fun _ ->
-    Client.zrangebyscore conn key 0. 100. >>= fun _ ->
-    Client.zrevrangebyscore conn key 0. 100. >>= fun _ ->
+    let open Client.FloatBound in
+    Client.zrangebyscore conn key NegInfinity PosInfinity >>= fun _ ->
+    let open Client.FloatBound in
+    Client.zrevrangebyscore conn key NegInfinity PosInfinity >>= fun _ ->
+    let open Client.StringBound in
+    Client.zrangebylex conn key NegInfinity PosInfinity >>= fun _ ->
+    let open Client.StringBound in
+    Client.zrevrangebylex conn key NegInfinity PosInfinity >>= fun _ ->
+    let open Client.FloatBound in
+    Client.zcount conn key NegInfinity PosInfinity >>=
+    io_assert "wrong sorted set size returned" ((=) 2) >>= fun () ->
+    let open Client.FloatBound in
+    Client.zcount conn key (Inclusive 5.) (Exclusive 100.)  >>=
+    io_assert "wrong sorted set size returned" ((=) 1) >>= fun () ->
+    let open Client.StringBound in
+    Client.zlexcount conn key NegInfinity PosInfinity >>=
+    io_assert "wrong sorted set size returned" ((=) 2) >>= fun () ->
+    let open Client.StringBound in
+    Client.zlexcount conn key (Inclusive "obj") (PosInfinity) >>=
+    io_assert "wrong sorted set size returned" ((=) 2) >>= fun () ->
     Client.zrem conn key [ "obj1"; "non_existing_key"; ] >>=
-    io_assert "removed 1 item from set" ((=) 1) >>= fun () ->
+    io_assert "not removed 1 item from set" ((=) 1) >>= fun () ->
+    Client.zrank conn key "obj1" >>=
+    io_assert "returned wrong rank" ((=) (None)) >>= fun () ->
+    Client.zrank conn key "obj2" >>=
+    io_assert "returned wrong rank" ((=) (Some 0)) >>= fun () ->
+    Client.zrevrank conn key "obj1" >>=
+    io_assert "returned wrong rank" ((=) (None)) >>= fun () ->
+    Client.zrevrank conn key "obj2" >>=
+    io_assert "returned wrong rank" ((=) (Some 0)) >>= fun () ->
+    Client.zcard conn key >>=
+    io_assert "wrong sorted set size returned" ((=) 1) >>= fun () ->
     Client.zscore conn key "obj1" >>=
     io_assert "item was removed" ((=) None)
+
+  let test_case_sorted_set_remove conn =
+    let key = redis_string_bucket () in
+    Client.zadd conn key [ 1.4, "obj1"; 1.6, "obj2"; ] >>= fun _ ->
+    Client.zremrangebyrank conn key 0 100 >>=
+    io_assert "removed wrong number of items" ((=) 2) >>= fun _ ->
+    Client.zadd conn key [ 1.4, "obj1"; 1.6, "obj2"; ] >>= fun _ ->
+    let open Client.FloatBound in
+    Client.zremrangebyscore conn key (Inclusive 1.) (Exclusive 2.) >>=
+    io_assert "removed wrong number of items" ((=) 2) >>= fun _ ->
+    Client.zadd conn key [ 1.4, "obj1"; 1.6, "obj2"; ] >>= fun _ ->
+    let open Client.StringBound in
+    Client.zremrangebylex conn key NegInfinity PosInfinity >>=
+    io_assert "removed wrong number of items" ((=) 2)
 
   let cleanup_keys conn =
     Client.keys conn "ounit_*" >>= fun keys ->
@@ -494,6 +536,7 @@ module Make(IO : Redis.S.IO) = struct
         "test_case_hscan" >:: (bracket test_case_hscan);
         "test_case_hyper_log_log" >:: (bracket test_case_hyper_log_log);
         "test_case_sorted_set" >:: (bracket test_case_sorted_set);
+        "test_case_sorted_set_remove" >:: (bracket test_case_sorted_set_remove);
       ] in
     Random.self_init ();
     let res = run_test_tt_main suite in

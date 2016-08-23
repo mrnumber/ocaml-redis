@@ -39,6 +39,26 @@ module Make(IO : S.IO) = struct
 
   type bit_operation = AND | OR | XOR | NOT
 
+  module StringBound = struct
+    type t = NegInfinity | PosInfinity | Exclusive of string | Inclusive of string
+
+    let to_string = function
+      | NegInfinity -> "-"
+      | PosInfinity -> "+"
+      | Exclusive bound -> String.concat "" ["("; bound]
+      | Inclusive bound -> String.concat "" ["["; bound]
+  end
+
+  module FloatBound = struct
+    type t = NegInfinity | PosInfinity | Exclusive of float | Inclusive of float
+
+    let to_string = function
+      | NegInfinity -> "-inf"
+      | PosInfinity -> "+inf"
+      | Exclusive bound -> String.concat "" ["("; string_of_float bound]
+      | Inclusive bound -> String.concat "" [""; string_of_float bound]
+  end
+
   let write out_ch args =
     let num_args = List.length args in
     IO.output_string out_ch (Printf.sprintf "*%d" num_args) >>= fun () ->
@@ -204,6 +224,11 @@ module Make(IO : S.IO) = struct
     | `Int64 n -> IO.return (Int64.to_float n)
     | `Bulk (Some str) -> IO.return (float_of_string str)
     | x        -> IO.fail (Unexpected x)
+
+  let return_int_option = function
+    | `Bulk None -> IO.return None
+    | `Int n     -> IO.return (Some n)
+    | x          -> IO.fail (Unexpected x)
 
   let return_float_option = function
     | `Bulk None -> IO.return None
@@ -1048,37 +1073,111 @@ module Make(IO : S.IO) = struct
     send_request connection command >>= return_multibulk
 
   (* Return a range of members in a sorted set, by score. *)
-  let zrangebyscore connection ?(withscores=false) ?limit key min max =
-    let imin = string_of_float min in
-    let imax = string_of_float max in
+  let zrangebyscore connection ?(withscores=false) ?limit key min_bound max_bound =
+    let min = FloatBound.to_string min_bound in
+    let max = FloatBound.to_string max_bound in
     let limit = match limit with
       | None -> []
       | Some (offset, count) -> [ "LIMIT";
                                   string_of_int offset;
                                   string_of_int count; ]
     in
-    let scores = if withscores then "withscores" :: limit else limit in
-    let command = "ZRANGEBYSCORE" :: key :: imin :: imax :: scores in
+    let scores = if withscores then "WITHSCORES" :: limit else limit in
+    let command = "ZRANGEBYSCORE" :: key :: min :: max :: scores in
+    send_request connection command >>= return_multibulk
+
+  (* Return a range of members in a sorted set, by lexicographical range. *)
+  let zrangebylex connection ?limit key min_bound max_bound =
+    let min = StringBound.to_string min_bound in
+    let max = StringBound.to_string max_bound in
+    let limit = match limit with
+      | None -> []
+      | Some (offset, count) ->
+        [ "LIMIT"; string_of_int offset; string_of_int count; ]
+    in
+    let command = "ZRANGEBYLEX" :: key :: min :: max :: limit in
     send_request connection command >>= return_multibulk
 
   (* Return a range of members in a sorted set, by score. *)
-  let zrevrangebyscore connection ?(withscores=false) ?limit key min max =
-    let imin = string_of_float min in
-    let imax = string_of_float max in
+  let zrevrangebyscore connection ?(withscores=false) ?limit key min_bound max_bound =
+    let min = FloatBound.to_string min_bound in
+    let max = FloatBound.to_string max_bound in
     let limit = match limit with
       | None -> []
       | Some (offset, count) -> [ "LIMIT";
                                   string_of_int offset;
                                   string_of_int count; ]
     in
-    let scores = if withscores then "withscores" :: limit else limit in
-    let command = "ZREVRANGEBYSCORE" :: key :: imin :: imax :: scores in
+    let scores = if withscores then "WITHSCORES" :: limit else limit in
+    let command = "ZREVRANGEBYSCORE" :: key :: min :: max :: scores in
+    send_request connection command >>= return_multibulk
+
+  (* Return a range of members in a sorted set, by lexicographical range. *)
+  let zrevrangebylex connection ?limit key min_bound max_bound =
+    let min = StringBound.to_string min_bound in
+    let max = StringBound.to_string max_bound in
+    let limit = match limit with
+      | None -> []
+      | Some (offset, count) ->
+        [ "LIMIT"; string_of_int offset; string_of_int count; ]
+    in
+    let command = "ZREVRANGEBYLEX" :: key :: min :: max :: limit in
     send_request connection command >>= return_multibulk
 
   (* Remove one or more members from a sorted set. *)
   let zrem connection key members =
     let command = "ZREM" :: key :: members in
     send_request connection command >>= return_int
+
+  (* Remove all members in a sorted set between the given lexicographical range. *)
+  let zremrangebylex connection key min_bound max_bound =
+    let min = StringBound.to_string min_bound in
+    let max = StringBound.to_string max_bound in
+    let command = ["ZREMRANGEBYLEX"; key; min; max] in
+    send_request connection command >>= return_int
+
+  (* Remove all members in a sorted set between the given score range. *)
+  let zremrangebyscore connection key min_bound max_bound =
+    let min = FloatBound.to_string min_bound in
+    let max = FloatBound.to_string max_bound in
+    let command = ["ZREMRANGEBYSCORE"; key; min; max] in
+    send_request connection command >>= return_int
+
+  (* Remove all members in a sorted set between the given rank range. *)
+  let zremrangebyrank connection key min_bound max_bound =
+    let min = string_of_int min_bound in
+    let max = string_of_int max_bound in
+    let command = ["ZREMRANGEBYRANK"; key; min; max] in
+    send_request connection command >>= return_int
+
+  (* Remove one or more members from a sorted set. *)
+  let zcard connection key =
+    let command = ["ZCARD"; key] in
+    send_request connection command >>= return_int
+
+  (* Returns the number of elements in the sorted set at key with a score between min and max. *)
+  let zcount connection key lower_bound upper_bound =
+    let command = ["ZCOUNT"; key;
+                   FloatBound.to_string lower_bound;
+                   FloatBound.to_string upper_bound;] in
+    send_request connection command >>= return_int
+
+  (* Returns the number of members in a sorted set between a given lexicographical range. *)
+  let zlexcount connection key lower_bound upper_bound =
+    let command = ["ZLEXCOUNT"; key;
+                   StringBound.to_string lower_bound;
+                   StringBound.to_string upper_bound;] in
+    send_request connection command >>= return_int
+
+  (* Returns the rank of member in the sorted set stored at key. *)
+  let zrank connection key member =
+    let command = ["ZRANK"; key; member] in
+    send_request connection command >>= return_int_option
+
+  (* Returns the reversed rank of member in the sorted set stored at key. *)
+  let zrevrank connection key member =
+    let command = ["ZREVRANK"; key; member] in
+    send_request connection command >>= return_int_option
 
   (** Transaction commands *)
 
