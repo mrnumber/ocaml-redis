@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.3.2
+
+Fixed EX/PX bug with SET (see issue #34, thanks @briancaine).
+
+Introduce string and float bound type.
+
+Following commands were added or fixed (due to bound type introduction):
+
+* ZRANGEBYSCORE
+* ZRANGEBYLEX
+* ZREVRANGEBYSCORE
+* ZREVRANGEBYLEX
+* ZREMRANGEBYLEX
+* ZREMRANGEBYSCORE
+* ZREMRANGEBYRANK
+* ZCARD
+* ZCOUNT
+* ZLEXCOUNT
+* ZRANK
+* ZREVRANK
+
 ## 0.3.1
 
 Expose stream type for both lwt and sync backends (see issue #32, thanks @acs1)
