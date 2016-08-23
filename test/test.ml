@@ -98,6 +98,10 @@ module Make(IO : Redis.S.IO) = struct
     io_assert "Can setnx key which is already set" ((=) false) >>= fun () ->
     Client.set conn ~nx:true key value >>=
     io_assert "Can set nx key which is already set" ((=) false) >>= fun () ->
+    Client.set conn ~ex:20 key value >>=
+    io_assert "Can set ex key which is already set" ((=) true) >>= fun () ->
+    Client.set conn ~px:200 key value >>=
+    io_assert "Can set ex key which is already set" ((=) true) >>= fun () ->
     Client.get conn key >>=
     io_assert "Key and value mismatch" ((=) (Some value)) >>= fun () ->
     Client.getset conn key value >>=
