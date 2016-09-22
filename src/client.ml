@@ -339,13 +339,14 @@ module Make(IO : S.IO) = struct
 
   let with_connection spec f =
     connect spec >>= fun c ->
-    try
-      f c >>= fun r ->
-      disconnect c >>= fun () ->
-      IO.return r
-    with e ->
-      disconnect c >>= fun () ->
-      IO.fail e
+    IO.catch
+      (fun () ->
+        f c >>= fun r ->
+        disconnect c >>= fun () ->
+        IO.return r)
+      (fun e ->
+        disconnect c >>= fun () ->
+        IO.fail e)
 
   let stream connection = connection.stream
 

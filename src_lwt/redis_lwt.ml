@@ -21,7 +21,7 @@ module IO = struct
     let do_connect () =
       let port = string_of_int port in
       Lwt_unix.getaddrinfo host port [] >>= function
-      | [] -> failwith "Could not resolve redis host!"
+      | [] -> Lwt.fail_with "Could not resolve redis host!"
       | addrinfo::_ -> return addrinfo.Lwt_unix.ai_addr >>= fun sock_addr ->
       Lwt_unix.connect fd sock_addr >>= fun () ->
       return fd

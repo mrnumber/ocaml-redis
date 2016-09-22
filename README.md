@@ -17,7 +17,7 @@ Changelog can be found in [CHANGES.md](/CHANGES.md) file.
 opam install redis
 ```
 
-It you want Lwt support, but doesn't have Lwt installed:
+If you want Lwt support, but don't yet have Lwt installed:
 
 ```
 opam install lwt redis
