@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.3
+
+* Fix fd leak for `Redis_lwt.Client.with_connection`, thanks @domsj
+* Fix socket leak on connection failure, thanks @ahrefs
+
 ## 0.3.2
 
 Fixed EX/PX bug with SET (see issue #34, thanks @briancaine).

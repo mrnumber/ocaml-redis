@@ -1,6 +1,6 @@
 # OASIS_START
-# DO NOT EDIT (digest: f9f41cea7dc027c999f2940e5e29e86e)
-version = "0.3.2"
+# DO NOT EDIT (digest: 52658439feda01ec12c5f2bd152ec5e0)
+version = "0.3.3"
 description = "Ocaml bindings for Redis"
 requires = "bytes re.str uuidm"
 archive(byte) = "redis.cma"
@@ -9,7 +9,7 @@ archive(native) = "redis.cmxa"
 archive(native, plugin) = "redis.cmxs"
 exists_if = "redis.cma"
 package "sync" (
- version = "0.3.2"
+ version = "0.3.3"
  description = "Ocaml bindings for Redis"
  requires = "redis"
  archive(byte) = "redis_sync.cma"
@@ -20,7 +20,7 @@ package "sync" (
 )
 
 package "lwt" (
- version = "0.3.2"
+ version = "0.3.3"
  description = "Ocaml bindings for Redis"
  requires = "redis lwt.unix lwt"
  archive(byte) = "redis_lwt.cma"
