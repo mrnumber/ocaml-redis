@@ -21,15 +21,19 @@ module IO = struct
   let run a = a
 
   let connect host port =
-    let sock_addr =
-      let port = string_of_int port in
-      match Unix.getaddrinfo host port [] with
-      | [] -> failwith "Could not resolve redis host!"
-      | addrinfo::_ -> addrinfo.Unix.ai_addr
+    let port = string_of_int port in
+    let addr_info =
+      let open Unix in
+      match getaddrinfo host port [AI_FAMILY PF_INET] with
+      | ai::_ -> ai
+      | [] ->
+          match getaddrinfo host port [AI_FAMILY PF_INET6] with
+          | ai::_ -> ai
+          | []    -> failwith "Could not resolve redis host!"
     in
-    let fd = Unix.socket (Unix.PF_INET) Unix.SOCK_STREAM 0 in
+    let fd = Unix.socket addr_info.Unix.ai_family Unix.SOCK_STREAM 0 in
     try
-      Unix.connect fd sock_addr; fd
+      Unix.connect fd addr_info.Unix.ai_addr; fd
     with
       exn -> Unix.close fd; raise exn
 

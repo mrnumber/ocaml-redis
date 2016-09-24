@@ -17,13 +17,20 @@ module IO = struct
   let run = Lwt_main.run
 
   let connect host port =
-    let fd = Lwt_unix.socket (Unix.PF_INET) Unix.SOCK_STREAM 0 in
+    let port = string_of_int port in
+    let addr_info =
+      let open Lwt_unix in
+      getaddrinfo host port [AI_FAMILY PF_INET] >>= function
+        | ai::_ -> return ai
+        | [] ->
+            getaddrinfo host port [AI_FAMILY PF_INET6] >>= function
+              | ai::_ -> return ai
+              | [] -> Lwt.fail_with "Could not resolve redis host!"
+    in
+    addr_info >>= fun addr_info ->
+    let fd = Lwt_unix.socket addr_info.Lwt_unix.ai_family Lwt_unix.SOCK_STREAM 0 in
     let do_connect () =
-      let port = string_of_int port in
-      Lwt_unix.getaddrinfo host port [] >>= function
-      | [] -> Lwt.fail_with "Could not resolve redis host!"
-      | addrinfo::_ -> return addrinfo.Lwt_unix.ai_addr >>= fun sock_addr ->
-      Lwt_unix.connect fd sock_addr >>= fun () ->
+      Lwt_unix.connect fd addr_info.Lwt_unix.ai_addr >>= fun () ->
       return fd
     in
     catch do_connect (fun exn -> Lwt_unix.close fd >>= fun () -> fail exn)
