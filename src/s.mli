@@ -55,6 +55,12 @@ module type Client = sig
 
   (** {6 Types and exceptions } *)
 
+  type moved = {
+    slot: string;
+    host: string;
+    port: int;
+  }
+
   type reply = [
     | `Status of string
     | `Error of string
@@ -62,6 +68,7 @@ module type Client = sig
     | `Int64 of Int64.t
     | `Bulk of string option
     | `Multibulk of reply list
+    | `Moved of moved
   ]
 
   type connection = private {
