@@ -55,7 +55,7 @@ module type Client = sig
 
   (** {6 Types and exceptions } *)
 
-  type moved = {
+  type redirection = {
     slot: string;
     host: string;
     port: int;
@@ -68,7 +68,8 @@ module type Client = sig
     | `Int64 of Int64.t
     | `Bulk of string option
     | `Multibulk of reply list
-    | `Moved of moved
+    | `Ask of redirection
+    | `Moved of redirection
   ]
 
   type connection = private {

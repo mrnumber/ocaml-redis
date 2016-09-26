@@ -7,7 +7,7 @@ module Make(IO : S.IO) = struct
 
   let (>>=) = IO.(>>=)
 
-  type moved = {
+  type redirection = {
     slot: string;
     host: string;
     port: int;
@@ -21,7 +21,8 @@ module Make(IO : S.IO) = struct
     | `Int64 of Int64.t
     | `Bulk of string option
     | `Multibulk of reply list
-    | `Moved of moved
+    | `Ask of redirection
+    | `Moved of redirection
   ]
 
   type connection = {
@@ -109,20 +110,28 @@ module Make(IO : S.IO) = struct
     in
     loop ()
 
-  let error_or_moved s =
+  let classify_error s =
     try
       let command = Utils.String.nsplit s " " in
       match command with
-        | "MOVED" :: slot :: host :: [] ->
-          (match Utils.String.split host ":" with
-           | Some (host, port) ->
-             let port = int_of_string port in
-             IO.return (`Moved {slot; host; port})
-           | None ->
-             IO.return (`Error s)
-          )
-        | _ ->
-          IO.return (`Error s)
+      | "ASK" :: slot :: host :: [] ->
+        (match Utils.String.split host ":" with
+         | Some (host, port) ->
+           let port = int_of_string port in
+           IO.return (`Ask {slot; host; port})
+         | None ->
+           IO.return (`Error s)
+        )
+      | "MOVED" :: slot :: host :: [] ->
+        (match Utils.String.split host ":" with
+         | Some (host, port) ->
+           let port = int_of_string port in
+           IO.return (`Moved {slot; host; port})
+         | None ->
+           IO.return (`Error s)
+        )
+      | _ ->
+        IO.return (`Error s)
     with Invalid_argument _ ->
       IO.return (`Error s)
 
@@ -161,7 +170,7 @@ module Make(IO : S.IO) = struct
       | '+' ->
           read_line in_ch >>= fun s -> IO.return (`Status s)
       | '-' ->
-          read_line in_ch >>= error_or_moved
+          read_line in_ch >>= classify_error
       | ':' ->
           read_integer in_ch
       | '$' ->
@@ -174,6 +183,7 @@ module Make(IO : S.IO) = struct
   let read_reply_exn in_ch =
     read_reply in_ch >>= function
       | `Moved _
+      | `Ask _
       | `Status _
       | `Int _
       | `Int64 _
@@ -331,6 +341,7 @@ module Make(IO : S.IO) = struct
   let rec send_request connection command =
     write connection.out_ch command >>= fun () ->
     read_reply_exn connection.in_ch >>= function
+    | `Ask {slot; host; port}
     | `Moved {slot; host; port} ->
       connect {host; port} >>= fun connection_moved ->
       send_request connection_moved command
