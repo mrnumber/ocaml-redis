@@ -1,8 +1,4 @@
-(** Bindings for redis.
-
-    This has only been tested with Redis 2.2, but will probably work for >= 2.0
- **)
-module Make(IO : S.IO) = struct
+module Common(IO: S.IO) = struct
   module IO = IO
 
   let (>>=) = IO.(>>=)
@@ -182,14 +178,18 @@ module Make(IO : S.IO) = struct
 
   let read_reply_exn in_ch =
     read_reply in_ch >>= function
-      | `Moved _
-      | `Ask _
       | `Status _
       | `Int _
       | `Int64 _
       | `Bulk _
       | `Multibulk _ as reply ->
           IO.return reply
+      | `Moved {slot; host; port} ->
+          let msg = Printf.sprintf "MOVED %s %s:%i" slot host port in
+          IO.fail (Error msg)
+      | `Ask {slot; host; port} ->
+          let msg = Printf.sprintf "ASK %s %s:%i" slot host port in
+          IO.fail (Error msg)
       | `Error msg ->
           IO.fail (Error msg)
 
@@ -341,10 +341,6 @@ module Make(IO : S.IO) = struct
   let rec send_request connection command =
     write connection.out_ch command >>= fun () ->
     read_reply_exn connection.in_ch >>= function
-    | `Ask {slot; host; port}
-    | `Moved {slot; host; port} ->
-      connect {host; port} >>= fun connection_moved ->
-      send_request connection_moved command
     | `Status _
     | `Int _
     | `Int64 _
@@ -394,6 +390,216 @@ module Make(IO : S.IO) = struct
     List.rev !command
 
   let stream connection = connection.stream
+end
+
+module type Mode = sig
+
+  module IO : S.IO
+
+  val ( >>= ) : 'a IO.t -> ('a -> 'b IO.t) -> 'b IO.t
+
+  type redirection = {
+    slot : string;
+    host : string;
+    port : int;
+  }
+
+  type reply = [
+    | `Ask of redirection
+    | `Bulk of string option
+    | `Error of string
+    | `Int of int
+    | `Int64 of Int64.t
+    | `Moved of redirection
+    | `Multibulk of reply list
+    | `Status of string
+  ]
+
+  type connection = {
+    fd : IO.fd;
+    in_ch : IO.in_channel;
+    out_ch : IO.out_channel;
+    stream : reply list IO.stream;
+  }
+
+  exception Error of string
+  exception Unexpected of reply
+  exception Unrecognized of string * string
+
+  type connection_spec = {
+    host : string;
+    port : int;
+  }
+
+  type bit_operation =  AND | OR | XOR | NOT
+
+  module StringBound : sig
+    type t =
+      | NegInfinity
+      | PosInfinity
+      | Exclusive of string
+      | Inclusive of string
+
+    val to_string : t -> string
+  end
+
+  module FloatBound : sig
+    type t =
+      | NegInfinity
+      | PosInfinity
+      | Exclusive of float
+      | Inclusive of float
+
+    val to_string : t -> string
+  end
+
+  val write : IO.out_channel -> string list -> unit IO.t
+  val read_fixed_line : int -> IO.in_channel -> bytes IO.t
+  val read_line : IO.in_channel -> string IO.t
+  val classify_error : string -> [> `Ask of redirection | `Error of string | `Moved of redirection ] IO.t
+  val read_integer : IO.in_channel -> [> `Int of int | `Int64 of int64 ] IO.t
+  val read_bulk : IO.in_channel -> [> `Bulk of bytes option ] IO.t
+  val interleave : ('a * 'a) list -> 'a list
+  val deinterleave : 'a list -> ('a * 'a) list
+  val return_bulk : reply -> string option IO.t
+  val return_no_nil_bulk : reply -> string IO.t
+  val return_bool : reply -> bool IO.t
+  val return_status : reply -> [> `Status of string ] IO.t
+  val return_expected_status : string -> reply -> unit IO.t
+  val return_ok_or_nil : reply -> bool IO.t
+  val return_ok_status : reply -> unit IO.t
+  val return_queued_status : reply -> unit IO.t
+  val return_int : reply -> int IO.t
+  val return_int64 : reply -> Int64.t IO.t
+  val return_float : reply -> float IO.t
+  val return_int_option : reply -> int option IO.t
+  val return_float_option : reply -> float option IO.t
+  val return_multibulk : reply -> reply list IO.t
+  val return_bulk_multibulk : reply -> string option list IO.t
+  val return_no_nil_multibulk : reply -> string list IO.t
+  val return_key_value_multibulk : reply -> (string * string) list IO.t
+  val return_opt_pair_multibulk : reply -> (string * string) option IO.t
+  val return_info_bulk : reply -> (string * string) list IO.t
+  val connect : connection_spec -> connection IO.t
+  val disconnect : connection -> unit IO.t
+  val with_connection :
+    connection_spec -> (connection -> 'a IO.t) -> 'a IO.t
+  val sort_command :
+    ?by:string ->
+    ?limit:int * int ->
+    ?get:'a list ->
+    ?order:[< `Asc | `Desc ] ->
+    ?alpha:bool -> ?store:string -> string -> string list
+  val stream : connection -> reply list IO.stream
+
+  val read_reply_exn :
+    IO.in_channel ->
+    [> `Ask of redirection
+    | `Bulk of bytes option
+    | `Int of int
+    | `Int64 of int64
+    | `Moved of redirection
+    | `Multibulk of
+         [ `Ask of redirection
+         | `Bulk of bytes option
+         | `Error of string
+         | `Int of int
+         | `Int64 of int64
+         | `Moved of redirection
+         | `Multibulk of 'a
+         | `Status of string ] list as 'a
+    | `Status of string
+    ] IO.t
+
+  val send_request :
+    connection ->
+    string list ->
+    [> `Bulk of bytes option
+    | `Int of int
+    | `Int64 of int64
+    | `Multibulk of
+         [ `Ask of redirection
+         | `Bulk of bytes option
+         | `Error of string
+         | `Int of int
+         | `Int64 of int64
+         | `Moved of redirection
+         | `Multibulk of 'a
+         | `Status of string ] list as 'a
+    | `Status of string
+    ] IO.t
+end
+
+module SimpleMode(IO : S.IO) = struct
+  include Common(IO)
+
+  let read_reply_exn in_ch =
+    read_reply in_ch >>= function
+    | `Status _
+    | `Int _
+    | `Int64 _
+    | `Bulk _
+    | `Multibulk _ as reply ->
+      IO.return reply
+    | `Moved _
+    | `Ask _ ->
+      IO.fail (Error "mon message")
+    | `Error msg ->
+      IO.fail (Error msg)
+
+  let send_request connection command =
+    write connection.out_ch command >>= fun () ->
+    read_reply_exn connection.in_ch >>= function
+    | `Status _
+    | `Int _
+    | `Int64 _
+    | `Bulk _
+    | `Multibulk _ as reply ->
+      IO.return reply
+end
+
+(** The redis cluster mode is only available with redis >= 3.0.
+
+    In cluster mode, redirection given by the server as [MOVED] or
+    [ASK] will be followed.
+*)
+module ClusterMode(IO : S.IO) = struct
+  include Common(IO)
+
+  let read_reply_exn in_ch =
+    read_reply in_ch >>= function
+    | `Moved _
+    | `Ask _
+    | `Status _
+    | `Int _
+    | `Int64 _
+    | `Bulk _
+    | `Multibulk _ as reply ->
+      IO.return reply
+    | `Error msg ->
+      IO.fail (Error msg)
+
+  let rec send_request connection command =
+    write connection.out_ch command >>= fun () ->
+    read_reply_exn connection.in_ch >>= function
+    | `Ask {slot; host; port}
+    | `Moved {slot; host; port} ->
+      connect {host; port} >>= fun connection_moved ->
+      send_request connection_moved command
+    | `Status _
+    | `Int _
+    | `Int64 _
+    | `Bulk _
+    | `Multibulk _ as reply ->
+      IO.return reply
+end
+
+(** Bindings for redis.
+
+    This has only been tested with Redis 2.2, but will probably work for >= 2.0
+ **)
+module MakeClient(Mode: Mode) = struct
+  include Mode
 
   (* Raises Error if password is invalid. *)
   let auth connection password =
@@ -1336,8 +1542,8 @@ module Make(IO : S.IO) = struct
       (function
         | End_of_file -> IO.return ()
         | e           -> IO.fail e)
-end
-
-module Cluster = struct
 
 end
+
+module Make(IO : S.IO) = MakeClient(SimpleMode(IO))
+module MakeCluster(IO : S.IO) = MakeClient(ClusterMode(IO))
