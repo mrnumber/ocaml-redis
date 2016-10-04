@@ -56,3 +56,7 @@ end
 module Client = Redis.Client.Make(IO)
 module Cache = Redis.Cache.Make(IO)(Client)
 module Mutex = Redis.Mutex.Make(IO)(Client)
+
+module ClusterClient = Redis.Client.MakeCluster(IO)
+module ClusterCache = Redis.Cache.Make(IO)(ClusterClient)
+module ClusterMutex = Redis.Mutex.Make(IO)(ClusterClient)
