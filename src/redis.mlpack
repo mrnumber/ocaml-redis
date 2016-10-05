@@ -1,8 +1,9 @@
 # OASIS_START
-# DO NOT EDIT (digest: b33fe7d5ba15850947e37d86a5d2b54a)
+# DO NOT EDIT (digest: e8d4e070f88c5472272b88f2d82e3850)
 S
 Utils
 Client
 Cache
 Mutex
+Crc16
 # OASIS_STOP
