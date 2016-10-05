@@ -4,7 +4,7 @@ module Common(IO: S.IO) = struct
   let (>>=) = IO.(>>=)
 
   type redirection = {
-    slot: string;
+    slot: int;
     host: string;
     port: int;
   }
@@ -113,6 +113,7 @@ module Common(IO: S.IO) = struct
       | "ASK" :: slot :: host :: [] ->
         (match Utils.String.split host ":" with
          | Some (host, port) ->
+           let slot = int_of_string slot in
            let port = int_of_string port in
            IO.return (`Ask {slot; host; port})
          | None ->
@@ -121,6 +122,7 @@ module Common(IO: S.IO) = struct
       | "MOVED" :: slot :: host :: [] ->
         (match Utils.String.split host ":" with
          | Some (host, port) ->
+           let slot = int_of_string slot in
            let port = int_of_string port in
            IO.return (`Moved {slot; host; port})
          | None ->
@@ -185,10 +187,10 @@ module Common(IO: S.IO) = struct
       | `Multibulk _ as reply ->
           IO.return reply
       | `Moved {slot; host; port} ->
-          let msg = Printf.sprintf "MOVED %s %s:%i" slot host port in
+          let msg = Printf.sprintf "MOVED %d %s:%i" slot host port in
           IO.fail (Error msg)
       | `Ask {slot; host; port} ->
-          let msg = Printf.sprintf "ASK %s %s:%i" slot host port in
+          let msg = Printf.sprintf "ASK %d %s:%i" slot host port in
           IO.fail (Error msg)
       | `Error msg ->
           IO.fail (Error msg)
@@ -399,7 +401,7 @@ module type Mode = sig
   val ( >>= ) : 'a IO.t -> ('a -> 'b IO.t) -> 'b IO.t
 
   type redirection = {
-    slot : string;
+    slot : int;
     host : string;
     port : int;
   }
@@ -528,34 +530,10 @@ module type Mode = sig
          | `Status of string ] list as 'a
     | `Status of string
     ] IO.t
-
-  val set : connection -> ?ex:int -> ?px:int -> ?nx:bool -> ?xx:bool -> string -> string -> bool IO.t
 end
 
 module SimpleMode(IO : S.IO) = struct
   include Common(IO)
-
-  let set connection ?ex:(ex=0) ?px:(px=0) ?nx:(nx=false) ?xx:(xx=false) key value =
-    match (nx, xx) with
-    | (true, true) ->
-      raise (Invalid_argument "SET command can contain only one of NX or XX options.")
-    | _ ->
-      let ex = match ex with
-        | 0 -> []
-        | _ -> ["EX"; string_of_int ex] in
-      let px = match px with
-        | 0 -> []
-        | _ -> ["PX"; string_of_int px] in
-      let nx = match nx with
-        | false -> []
-        | true -> ["NX"] in
-      let xx = match xx with
-        | false -> []
-        | true -> ["XX"] in
-      let base_command = [ "SET"; key; value; ] in
-      let args = List.concat [ex; px; nx; xx] in
-      let command = List.concat [base_command; args] in
-      send_request connection command >>= return_ok_or_nil
 end
 
 (** The redis cluster mode is only available with redis >= 3.0.
@@ -566,13 +544,13 @@ end
 module ClusterMode(IO : S.IO) = struct
   include Common(IO)
 
-  module IntMap = Map.Make(struct
+  module SlotMap = Map.Make(struct
       type t = int
       let compare = Pervasives.compare
     end)
 
   (* slot -> connection *)
-  let connections = ref IntMap.empty
+  let connections = ref SlotMap.empty
 
   let node_id {host; port} =
     Printf.sprintf "%s:%d" host port
@@ -588,17 +566,16 @@ module ClusterMode(IO : S.IO) = struct
 
   let get_connection slot =
     try
-      Some (IntMap.find slot !connections)
+      Some (SlotMap.find slot !connections)
     with Not_found ->
       None
 
-  (* TODO: Il devrait y avoir le crc ici pour obtenir le slot. Pas besion de map *)
-  let get_slot tag =
-    Crc16.crc16 tag mod 16600
+  let get_slot key =
+    let tag = get_tag key in
+    Crc16.crc16 tag mod 16384
 
   let get_connection_for_key key =
-    let tag = get_tag key in
-    let slot = get_slot tag in
+    let slot = get_slot key in
     get_connection slot
 
   let read_reply_exn in_ch =
@@ -614,13 +591,17 @@ module ClusterMode(IO : S.IO) = struct
     | `Error msg ->
       IO.fail (Error msg)
 
-  let rec send_request connection command =
+  let rec send_request' my_slot connection command =
     write connection.out_ch command >>= fun () ->
     read_reply_exn connection.in_ch >>= function
-    | `Ask {slot; host; port}
+    | `Ask {slot; host; port} ->
+      connect {host; port} >>= fun connection_moved ->
+      send_request' my_slot connection_moved command
     | `Moved {slot; host; port} ->
       connect {host; port} >>= fun connection_moved ->
-      send_request connection_moved command
+      (* Printf.printf "Connection moved for slot %d (command %s) (my slot is %d). Creating new connection to %s:%d.\n%!" slot (String.concat " " command) my_slot host port; *)
+      connections := SlotMap.add slot (connection_moved, host, port) !connections;
+      send_request' my_slot connection_moved command
     | `Status _
     | `Int _
     | `Int64 _
@@ -628,51 +609,49 @@ module ClusterMode(IO : S.IO) = struct
     | `Multibulk _ as reply ->
       IO.return reply
 
-  let rec send_request_with_key key connection command =
-    let connection =
-      match get_connection_for_key key with
-      | None -> connection
-      | Some connection -> connection
+  let send_request connection command =
+    let key =
+      match command with
+      | _command_name :: key :: _ ->
+        (* Printf.printf "send request for slot %d (command %s)\n%!" (get_slot key) (String.concat " " command); *)
+        Some key
+      | "info" :: _
+      | "multi" :: _
+      | "exec" :: _
+      | "slaveof" :: _
+      | "config" :: _
+      | "shutdown" :: _
+      | _ ->
+        None
     in
-    write connection.out_ch command >>= fun () ->
-    read_reply_exn connection.in_ch >>= function
-    | `Ask {slot; host; port}
-    | `Moved {slot; host; port} ->
-      connect {host; port} >>= fun connection_moved ->
-      let () =
-        let tag = get_tag key in
-        let slot = get_slot tag in
-        connections := IntMap.add slot connection_moved !connections
-      in
-      send_request_with_key key connection_moved command
-    | `Status _
-    | `Int _
-    | `Int64 _
-    | `Bulk _
-    | `Multibulk _ as reply ->
-      IO.return reply
+    let connection =
+      match key with
+      | None ->
+        (* Printf.printf "no key for this command. Use default connection.\n%!"; *)
+        connection
+      | Some key ->
+        match get_connection_for_key key with
+        | None ->
+          (* Printf.printf "no existing connection for this slot. Use default connection.\n%!"; *)
+          connection
+        | Some (connection, _host, _port) ->
+          (* Printf.printf "One connection is stored for this slot. Using it.\n%!"; *)
+          connection
+    in
+    let my_slot =
+      match key with
+      | None -> (-1)
+      | Some k -> get_slot k
+    in
+    send_request' my_slot connection command
 
-  let set connection ?ex:(ex=0) ?px:(px=0) ?nx:(nx=false) ?xx:(xx=false) key value =
-    match (nx, xx) with
-    | (true, true) ->
-      raise (Invalid_argument "SET command can contain only one of NX or XX options.")
-    | _ ->
-      let ex = match ex with
-        | 0 -> []
-        | _ -> ["EX"; string_of_int ex] in
-      let px = match px with
-        | 0 -> []
-        | _ -> ["PX"; string_of_int px] in
-      let nx = match nx with
-        | false -> []
-        | true -> ["NX"] in
-      let xx = match xx with
-        | false -> []
-        | true -> ["XX"] in
-      let base_command = [ "SET"; key; value; ] in
-      let args = List.concat [ex; px; nx; xx] in
-      let command = List.concat [base_command; args] in
-      send_request_with_key key connection command >>= return_ok_or_nil
+  let disconnect connection =
+    SlotMap.iter (fun slot (connection, host, port) ->
+      Printf.printf "disconnecting slot %d (%s:%d)\n%!" slot host port;
+      let _ = disconnect connection in
+      ()
+    ) !connections;
+    disconnect connection
 end
 
 (** Bindings for redis.
@@ -966,6 +945,28 @@ module MakeClient(Mode: Mode) = struct
   let msetnx connection items =
     let command = "MSETNX" :: (interleave items) in
     send_request connection command >>= return_bool
+
+  let set connection ?ex:(ex=0) ?px:(px=0) ?nx:(nx=false) ?xx:(xx=false) key value =
+    match (nx, xx) with
+    | (true, true) ->
+      raise (Invalid_argument "SET command can contain only one of NX or XX options.")
+    | _ ->
+      let ex = match ex with
+        | 0 -> []
+        | _ -> ["EX"; string_of_int ex] in
+      let px = match px with
+        | 0 -> []
+        | _ -> ["PX"; string_of_int px] in
+      let nx = match nx with
+        | false -> []
+        | true -> ["NX"] in
+      let xx = match xx with
+        | false -> []
+        | true -> ["XX"] in
+      let base_command = [ "SET"; key; value; ] in
+      let args = List.concat [ex; px; nx; xx] in
+      let command = List.concat [base_command; args] in
+      send_request connection command >>= return_ok_or_nil
 
   let setex connection key seconds value =
     let seconds = string_of_int seconds in

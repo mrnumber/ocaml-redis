@@ -56,7 +56,7 @@ module type Client = sig
   (** {6 Types and exceptions } *)
 
   type redirection = {
-    slot: string;
+    slot: int;
     host: string;
     port: int;
   }
