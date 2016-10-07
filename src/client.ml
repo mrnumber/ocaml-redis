@@ -549,8 +549,17 @@ module ClusterMode(IO : S.IO) = struct
       let compare = Pervasives.compare
     end)
 
-  (* slot -> connection *)
-  let connections = ref SlotMap.empty
+  module ConnectionSpecMap = Map.Make(struct
+      type t = connection_spec
+      let compare a b =
+        let compare_host = compare a.host b.host in
+        let compare_port = compare a.port b.port in
+        if compare_host = 0 then compare_port else compare_host
+    end)
+
+  (* slot -> connection_spec *)
+  let connections_spec = ref SlotMap.empty
+  let connections = ref ConnectionSpecMap.empty
 
   let node_id {host; port} =
     Printf.sprintf "%s:%d" host port
@@ -566,7 +575,9 @@ module ClusterMode(IO : S.IO) = struct
 
   let get_connection slot =
     try
-      Some (SlotMap.find slot !connections)
+      let spec = SlotMap.find slot !connections_spec in
+      let connection = ConnectionSpecMap.find spec !connections in
+      Some (connection)
     with Not_found ->
       None
 
@@ -600,7 +611,8 @@ module ClusterMode(IO : S.IO) = struct
     | `Moved {slot; host; port} ->
       connect {host; port} >>= fun connection_moved ->
       (* Printf.printf "Connection moved for slot %d (command %s) (my slot is %d). Creating new connection to %s:%d.\n%!" slot (String.concat " " command) my_slot host port; *)
-      connections := SlotMap.add slot (connection_moved, host, port) !connections;
+      connections_spec := SlotMap.add slot {host; port} !connections_spec;
+      connections := ConnectionSpecMap.add {host; port} connection_moved !connections;
       send_request' my_slot connection_moved command
     | `Status _
     | `Int _
@@ -634,7 +646,7 @@ module ClusterMode(IO : S.IO) = struct
         | None ->
           (* Printf.printf "no existing connection for this slot. Use default connection.\n%!"; *)
           connection
-        | Some (connection, _host, _port) ->
+        | Some connection ->
           (* Printf.printf "One connection is stored for this slot. Using it.\n%!"; *)
           connection
     in
@@ -646,8 +658,8 @@ module ClusterMode(IO : S.IO) = struct
     send_request' my_slot connection command
 
   let disconnect connection =
-    SlotMap.iter (fun slot (connection, host, port) ->
-      Printf.printf "disconnecting slot %d (%s:%d)\n%!" slot host port;
+    ConnectionSpecMap.iter (fun  {host; port} connection ->
+      Printf.printf "disconnecting %s:%d\n%!" host port;
       let _ = disconnect connection in
       ()
     ) !connections;
