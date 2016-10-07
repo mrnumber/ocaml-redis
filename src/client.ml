@@ -658,12 +658,12 @@ module ClusterMode(IO : S.IO) = struct
     send_request' my_slot connection command
 
   let disconnect connection =
-    ConnectionSpecMap.iter (fun  {host; port} connection ->
+    let connection_list = ConnectionSpecMap.bindings !connections in
+    connections := ConnectionSpecMap.empty;
+    IO.iter (fun ({host; port}, connection) ->
       Printf.printf "disconnecting %s:%d\n%!" host port;
-      let _ = disconnect connection in
-      ()
-    ) !connections;
-    disconnect connection
+      disconnect connection
+    ) connection_list
 end
 
 (** Bindings for redis.
