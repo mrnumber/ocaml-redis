@@ -496,6 +496,8 @@ module Make(IO : Redis.S.IO) = struct
     with (Client.Unexpected reply as exn) ->
       let rec to_string = function
         | `Status s -> Printf.sprintf "(Status %s)" s
+        | `Moved {Client.slot; host; port} -> Printf.sprintf "MOVED %d %s:%i" slot host port
+        | `Ask {Client.slot; host; port} -> Printf.sprintf "ASK %d %s:%i" slot host port
         | `Error  s -> Printf.sprintf "(Error %s)" s
         | `Int i -> Printf.sprintf "(Int %i)" i
         | `Int64 i -> Printf.sprintf "(Int64 %Li)" i
