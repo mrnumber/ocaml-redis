@@ -72,11 +72,25 @@ module type Client = sig
     | `Moved of redirection
   ]
 
-  type connection = private {
-    fd     : IO.fd;
-    in_ch  : IO.in_channel;
-    out_ch : IO.out_channel;
-    stream : reply list IO.stream;
+  (** Server connection info *)
+  type connection_spec = {
+    host : string;
+    port : int;
+  }
+
+  module SlotMap : Map.S with type key = int
+  module ConnectionSpecMap : Map.S with type key = connection_spec
+
+  type cluster_connections = private {
+    mutable connections_spec : connection_spec SlotMap.t;
+    mutable connections : connection ConnectionSpecMap.t;
+  }
+  and connection = private {
+    fd      : IO.fd;
+    in_ch   : IO.in_channel;
+    out_ch  : IO.out_channel;
+    stream  : reply list IO.stream;
+    cluster : cluster_connections;
   }
 
   (** Error responses from server *)
@@ -85,12 +99,6 @@ module type Client = sig
   (** Protocol errors *)
   exception Unexpected of reply
   exception Unrecognized of string * string (* explanation, data *)
-
-  (** Server connection info *)
-  type connection_spec = {
-    host : string;
-    port : int;
-  }
 
   (** Possible BITOP operations *)
   type bit_operation = AND | OR | XOR | NOT

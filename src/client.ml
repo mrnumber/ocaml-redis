@@ -21,11 +21,41 @@ module Common(IO: S.IO) = struct
     | `Moved of redirection
   ]
 
-  type connection = {
-    fd     : IO.fd;
-    in_ch  : IO.in_channel;
-    out_ch : IO.out_channel;
-    stream : reply list IO.stream;
+
+  (* server connection info *)
+  type connection_spec = {
+    host : string;
+    port : int;
+  }
+
+  module SlotMap = Map.Make(struct
+      type t = int
+      let compare = Pervasives.compare
+    end)
+
+  module ConnectionSpecMap = Map.Make(struct
+      type t = connection_spec
+      let compare a b =
+        let compare_host = compare a.host b.host in
+        let compare_port = compare a.port b.port in
+        if compare_host = 0 then compare_port else compare_host
+    end)
+
+  type cluster_connections = {
+    mutable connections_spec : connection_spec SlotMap.t;
+    mutable connections : connection ConnectionSpecMap.t;
+  }
+  and connection = {
+    fd      : IO.fd;
+    in_ch   : IO.in_channel;
+    out_ch  : IO.out_channel;
+    stream  : reply list IO.stream;
+    cluster : cluster_connections;
+  }
+
+  let empty_cluster = {
+    connections_spec = SlotMap.empty;
+    connections = ConnectionSpecMap.empty;
   }
 
   (* error responses from server *)
@@ -34,12 +64,6 @@ module Common(IO: S.IO) = struct
   (* these signal protocol errors *)
   exception Unexpected of reply
   exception Unrecognized of string * string (* explanation, data *)
-
-  (* server connection info *)
-  type connection_spec = {
-    host : string;
-    port : int;
-  }
 
   type bit_operation = AND | OR | XOR | NOT
 
@@ -316,6 +340,7 @@ module Common(IO: S.IO) = struct
       { fd = fd;
         in_ch = in_ch;
         out_ch = IO.out_channel_of_descr fd;
+        cluster = empty_cluster;
         stream =
           let f _ =
             read_reply_exn in_ch >>= fun resp ->
@@ -417,21 +442,29 @@ module type Mode = sig
     | `Status of string
   ]
 
-  type connection = {
-    fd : IO.fd;
-    in_ch : IO.in_channel;
-    out_ch : IO.out_channel;
-    stream : reply list IO.stream;
+  type connection_spec = {
+    host : string;
+    port : int;
+  }
+
+  module SlotMap : Map.S with type key = int
+  module ConnectionSpecMap : Map.S with type key = connection_spec
+
+  type cluster_connections = {
+    mutable connections_spec : connection_spec SlotMap.t;
+    mutable connections : connection ConnectionSpecMap.t;
+  }
+  and connection = {
+    fd      : IO.fd;
+    in_ch   : IO.in_channel;
+    out_ch  : IO.out_channel;
+    stream  : reply list IO.stream;
+    cluster : cluster_connections;
   }
 
   exception Error of string
   exception Unexpected of reply
   exception Unrecognized of string * string
-
-  type connection_spec = {
-    host : string;
-    port : int;
-  }
 
   type bit_operation =  AND | OR | XOR | NOT
 
@@ -544,23 +577,6 @@ end
 module ClusterMode(IO : S.IO) = struct
   include Common(IO)
 
-  module SlotMap = Map.Make(struct
-      type t = int
-      let compare = Pervasives.compare
-    end)
-
-  module ConnectionSpecMap = Map.Make(struct
-      type t = connection_spec
-      let compare a b =
-        let compare_host = compare a.host b.host in
-        let compare_port = compare a.port b.port in
-        if compare_host = 0 then compare_port else compare_host
-    end)
-
-  (* slot -> connection_spec *)
-  let connections_spec = ref SlotMap.empty
-  let connections = ref ConnectionSpecMap.empty
-
   let node_id {host; port} =
     Printf.sprintf "%s:%d" host port
 
@@ -573,10 +589,10 @@ module ClusterMode(IO : S.IO) = struct
     else
       s
 
-  let get_connection slot =
+  let get_connection connections_specs connections slot =
     try
-      let spec = SlotMap.find slot !connections_spec in
-      let connection = ConnectionSpecMap.find spec !connections in
+      let spec = SlotMap.find slot connections_specs in
+      let connection = ConnectionSpecMap.find spec connections in
       Some (connection)
     with Not_found ->
       None
@@ -585,9 +601,9 @@ module ClusterMode(IO : S.IO) = struct
     let tag = get_tag key in
     Crc16.crc16 tag mod 16384
 
-  let get_connection_for_key key =
+  let get_connection_for_key connections_specs connections key =
     let slot = get_slot key in
-    get_connection slot
+    get_connection connections_specs connections slot
 
   let read_reply_exn in_ch =
     read_reply in_ch >>= function
@@ -602,24 +618,26 @@ module ClusterMode(IO : S.IO) = struct
     | `Error msg ->
       IO.fail (Error msg)
 
-  let rec send_request' my_slot connection command =
-    write connection.out_ch command >>= fun () ->
-    read_reply_exn connection.in_ch >>= function
-    | `Ask {slot; host; port} ->
-      connect {host; port} >>= fun connection_moved ->
-      send_request' my_slot connection_moved command
-    | `Moved {slot; host; port} ->
-      connect {host; port} >>= fun connection_moved ->
-      (* Printf.printf "Connection moved for slot %d (command %s) (my slot is %d). Creating new connection to %s:%d.\n%!" slot (String.concat " " command) my_slot host port; *)
-      connections_spec := SlotMap.add slot {host; port} !connections_spec;
-      connections := ConnectionSpecMap.add {host; port} connection_moved !connections;
-      send_request' my_slot connection_moved command
-    | `Status _
-    | `Int _
-    | `Int64 _
-    | `Bulk _
-    | `Multibulk _ as reply ->
-      IO.return reply
+  let send_request' my_slot main_connection command =
+    let rec loop connection =
+      write connection.out_ch command >>= fun () ->
+      read_reply_exn connection.in_ch >>= function
+      | `Ask {slot; host; port} ->
+        connect {host; port} >>= fun connection_moved ->
+        loop connection_moved
+      | `Moved {slot; host; port} ->
+        connect {host; port} >>= fun connection_moved ->
+        main_connection.cluster.connections_spec <- SlotMap.add slot {host; port} main_connection.cluster.connections_spec;
+        main_connection.cluster.connections <- ConnectionSpecMap.add {host; port} connection_moved main_connection.cluster.connections;
+        loop connection_moved
+      | `Status _
+      | `Int _
+      | `Int64 _
+      | `Bulk _
+      | `Multibulk _ as reply ->
+        IO.return reply
+    in
+    loop main_connection
 
   let send_request connection command =
     let key =
@@ -642,7 +660,7 @@ module ClusterMode(IO : S.IO) = struct
         (* Printf.printf "no key for this command. Use default connection.\n%!"; *)
         connection
       | Some key ->
-        match get_connection_for_key key with
+        match get_connection_for_key connection.cluster.connections_spec connection.cluster.connections key with
         | None ->
           (* Printf.printf "no existing connection for this slot. Use default connection.\n%!"; *)
           connection
@@ -658,8 +676,8 @@ module ClusterMode(IO : S.IO) = struct
     send_request' my_slot connection command
 
   let disconnect connection =
-    let connection_list = ConnectionSpecMap.bindings !connections in
-    connections := ConnectionSpecMap.empty;
+    let connection_list = ConnectionSpecMap.bindings connection.cluster.connections in
+    connection.cluster.connections <- ConnectionSpecMap.empty;
     IO.iter (fun ({host; port}, connection) ->
       Printf.printf "disconnecting %s:%d\n%!" host port;
       disconnect connection
