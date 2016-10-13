@@ -589,10 +589,10 @@ module ClusterMode(IO : S.IO) = struct
     else
       s
 
-  let get_connection connections_specs connections slot =
+  let get_connection connection slot =
     try
-      let spec = SlotMap.find slot connections_specs in
-      let connection = ConnectionSpecMap.find spec connections in
+      let spec = SlotMap.find slot connection.cluster.connections_spec in
+      let connection = ConnectionSpecMap.find spec connection.cluster.connections in
       Some (connection)
     with Not_found ->
       None
@@ -601,9 +601,9 @@ module ClusterMode(IO : S.IO) = struct
     let tag = get_tag key in
     Crc16.crc16 tag mod 16384
 
-  let get_connection_for_key connections_specs connections key =
+  let get_connection_for_key connection key =
     let slot = get_slot key in
-    get_connection connections_specs connections slot
+    get_connection connection slot
 
   let read_reply_exn in_ch =
     read_reply in_ch >>= function
@@ -618,17 +618,27 @@ module ClusterMode(IO : S.IO) = struct
     | `Error msg ->
       IO.fail (Error msg)
 
-  let send_request' my_slot main_connection command =
+  let send_request' main_connection command =
     let rec loop connection =
       write connection.out_ch command >>= fun () ->
       read_reply_exn connection.in_ch >>= function
       | `Ask {slot; host; port} ->
         connect {host; port} >>= fun connection_moved ->
-        loop connection_moved
+        let res = loop connection_moved in
+        disconnect connection_moved >>= fun () ->
+        res
       | `Moved {slot; host; port} ->
-        connect {host; port} >>= fun connection_moved ->
+        (* Printf.printf "MOVED. new connection for slot %d %s:%d\n%!" slot host port; *)
+        begin
+          try
+            IO.return (ConnectionSpecMap.find {host; port} main_connection.cluster.connections)
+          with Not_found ->
+            connect {host; port} >>= fun connection_moved ->
+            main_connection.cluster.connections <- ConnectionSpecMap.add {host; port} connection_moved main_connection.cluster.connections;
+            IO.return connection_moved
+        end
+        >>= fun connection_moved ->
         main_connection.cluster.connections_spec <- SlotMap.add slot {host; port} main_connection.cluster.connections_spec;
-        main_connection.cluster.connections <- ConnectionSpecMap.add {host; port} connection_moved main_connection.cluster.connections;
         loop connection_moved
       | `Status _
       | `Int _
@@ -660,7 +670,7 @@ module ClusterMode(IO : S.IO) = struct
         (* Printf.printf "no key for this command. Use default connection.\n%!"; *)
         connection
       | Some key ->
-        match get_connection_for_key connection.cluster.connections_spec connection.cluster.connections key with
+        match get_connection_for_key connection key with
         | None ->
           (* Printf.printf "no existing connection for this slot. Use default connection.\n%!"; *)
           connection
@@ -668,20 +678,16 @@ module ClusterMode(IO : S.IO) = struct
           (* Printf.printf "One connection is stored for this slot. Using it.\n%!"; *)
           connection
     in
-    let my_slot =
-      match key with
-      | None -> (-1)
-      | Some k -> get_slot k
-    in
-    send_request' my_slot connection command
+    send_request' connection command
 
   let disconnect connection =
     let connection_list = ConnectionSpecMap.bindings connection.cluster.connections in
     connection.cluster.connections <- ConnectionSpecMap.empty;
     IO.iter (fun ({host; port}, connection) ->
-      Printf.printf "disconnecting %s:%d\n%!" host port;
+      (* Printf.printf "disconnecting %s:%d\n%!" host port; *)
       disconnect connection
     ) connection_list
+    >>= fun () -> disconnect connection
 end
 
 (** Bindings for redis.
