@@ -361,10 +361,10 @@ module type Client = sig
   val lpop : connection -> string -> string option IO.t
 
   (** Prepend one or multiple values to a list *)
-  val lpush : connection -> string -> string -> int IO.t
+  val lpush : connection -> string -> string list -> int IO.t
 
   (** Prepend a value to a list, only if the list exists *)
-  val lpushx : connection -> string -> string -> int IO.t
+  val lpushx : connection -> string -> string list -> int IO.t
 
   (** Get a range of elements from a list *)
   val lrange : connection -> string -> int -> int -> string list IO.t
@@ -385,10 +385,10 @@ module type Client = sig
   val rpoplpush : connection -> string -> string -> string option IO.t
 
   (** Append one or multiple values to a list *)
-  val rpush : connection -> string -> string -> int IO.t
+  val rpush : connection -> string -> string list -> int IO.t
 
   (** Append a value to a list, only if the list exists *)
-  val rpushx : connection -> string -> string -> int IO.t
+  val rpushx : connection -> string -> string list -> int IO.t
 
   (** {6 HyperLogLog commands} *)
 

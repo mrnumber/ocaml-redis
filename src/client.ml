@@ -1191,13 +1191,13 @@ module MakeClient(Mode: Mode) = struct
     send_request connection command >>= return_bulk
 
   (* Returns length of list after operation. *)
-  let lpush connection key value =
-    let command = [ "LPUSH"; key; value ] in
+  let lpush connection key values =
+    let command = "LPUSH" :: key :: values in
     send_request connection command >>= return_int
 
   (* Only push when list exists. Return length of list after operation. *)
-  let lpushx connection key value =
-    let command = [ "LPUSHX"; key; value ] in
+  let lpushx connection key values =
+    let command = "LPUSHX" :: key :: values in
     send_request connection command >>= return_int
 
   (* Out of range arguments are handled by limiting to valid range. *)
@@ -1237,12 +1237,12 @@ module MakeClient(Mode: Mode) = struct
     send_request connection command >>= return_bulk
 
   (* Returns length of list after operation. *)
-  let rpush connection key value =
-    let command = [ "RPUSH"; key; value ] in
+  let rpush connection key values =
+    let command = "RPUSH" :: key :: values in
     send_request connection command >>= return_int
 
-  let rpushx connection key value =
-    let command = [ "RPUSHX"; key; value ] in
+  let rpushx connection key values =
+    let command = "RPUSHX" :: key :: values in
     send_request connection command >>= return_int
 
   (** HyperLogLog commands *)
