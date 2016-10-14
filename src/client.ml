@@ -580,12 +580,11 @@ module ClusterMode(IO : S.IO) = struct
   let node_id {host; port} =
     Printf.sprintf "%s:%d" host port
 
-  let tag_re = Re_str.regexp {|[^{]*{\([^}]*\)}.*|}
+  let tag_re = Re_str.regexp {|[^{]*{\([^}]+\)}.*|}
 
   let get_tag s =
     if Re_str.string_match tag_re s 0 then
-      let tag = Re_str.matched_group 1 s in
-      tag
+      Re_str.matched_group 1 s
     else
       s
 
