@@ -1638,6 +1638,148 @@ module MakeClient(Mode: Mode) = struct
         | End_of_file -> IO.return ()
         | e           -> IO.fail e)
 
+  module MassInsert = struct
+    type command = string list
+
+    let node_id {host; port} =
+      Printf.sprintf "%s:%d" host port
+
+    let tag_re = Re_str.regexp {|[^{]*{\([^}]+\)}.*|}
+
+    let get_tag s =
+      if Re_str.string_match tag_re s 0 then
+        Re_str.matched_group 1 s
+      else
+        s
+
+    let get_connection connection slot =
+      try
+        let spec = SlotMap.find slot connection.cluster.connections_spec in
+        let connection = ConnectionSpecMap.find spec connection.cluster.connections in
+        Some (connection)
+      with Not_found ->
+        None
+
+    let get_slot key =
+      let tag = get_tag key in
+      Crc16.crc16 tag mod 16384
+
+    let get_connection_for_key connection key =
+      let slot = get_slot key in
+      get_connection connection slot
+
+    let send_request connection command =
+      let key =
+        match command with
+        | _command_name :: key :: _ ->
+          (* Printf.printf "send request for slot %d (command %s)\n%!" (get_slot key) (String.concat " " command); *)
+          Some key
+        | "info" :: _
+        | "multi" :: _
+        | "exec" :: _
+        | "slaveof" :: _
+        | "config" :: _
+        | "shutdown" :: _
+        | _ ->
+          None
+      in
+      let connection =
+        match key with
+        | None ->
+          (* Printf.printf "no key for this command. Use default connection.\n%!"; *)
+          connection
+        | Some key ->
+          match get_connection_for_key connection key with
+          | None ->
+            (* Printf.printf "no existing connection for this slot. Use default connection.\n%!"; *)
+            connection
+          | Some connection ->
+            (* Printf.printf "One connection is stored for this slot. Using it.\n%!"; *)
+            connection
+      in
+      write connection.out_ch command
+
+    let next_action main_connection (command, resp) =
+      match resp with
+      | Some r -> IO.return (command, resp)
+      | None ->
+        read_reply_exn main_connection.in_ch >>= function
+        | `Ask {slot; host; port} ->
+          connect {host; port} >>= fun connection_moved ->
+          send_request connection_moved command >>= fun () ->
+          disconnect connection_moved >>= fun () ->
+          IO.return (command, None)
+        | `Moved {slot; host; port} ->
+          (* Printf.printf "MOVED. new connection for slot %d %s:%d\n%!" slot host port; *)
+          begin
+            try
+              IO.return (ConnectionSpecMap.find {host; port} main_connection.cluster.connections)
+            with Not_found ->
+              connect {host; port} >>= fun connection_moved ->
+              main_connection.cluster.connections <- ConnectionSpecMap.add {host; port} connection_moved main_connection.cluster.connections;
+              IO.return connection_moved
+          end
+          >>= fun connection_moved ->
+          main_connection.cluster.connections_spec <- SlotMap.add slot {host; port} main_connection.cluster.connections_spec;
+          send_request connection_moved command >>= fun () ->
+          IO.return (command, None)
+        | `Status _
+        | `Int _
+        | `Int64 _
+        | `Bulk _
+        | `Multibulk _ as reply ->
+          IO.return (command, Some reply)
+
+    let read_loop connection responses =
+      let rec loop responses =
+        IO.map_serial (next_action connection) responses >>= fun rs ->
+        let stop = List.fold_left (fun stop r ->
+          match r with
+          | (_, Some _) -> stop && true
+          | (_, None) -> stop && false
+        ) true rs
+        in
+        if not stop then
+          loop rs
+        else
+          IO.return rs
+      in
+      loop responses
+
+    let write connection commands =
+      IO.map_serial (fun command ->
+        send_request connection command >>= fun () ->
+        IO.return (command, None)
+      ) commands
+      >>= fun responses ->
+      read_loop connection responses
+
+    let hset key field value =
+      [ "HSET"; key; field; value ]
+
+    let set ?ex:(ex=0) ?px:(px=0) ?nx:(nx=false) ?xx:(xx=false) key value =
+      match (nx, xx) with
+      | (true, true) ->
+        raise (Invalid_argument "SET command can contain only one of NX or XX options.")
+      | _ ->
+        let ex = match ex with
+          | 0 -> []
+          | _ -> ["EX"; string_of_int ex] in
+        let px = match px with
+          | 0 -> []
+          | _ -> ["PX"; string_of_int px] in
+        let nx = match nx with
+          | false -> []
+          | true -> ["NX"] in
+        let xx = match xx with
+          | false -> []
+          | true -> ["XX"] in
+        let base_command = [ "SET"; key; value; ] in
+        let args = List.concat [ex; px; nx; xx] in
+        let command = List.concat [base_command; args] in
+        command
+  end
+
 end
 
 module Make(IO : S.IO) = MakeClient(SimpleMode(IO))

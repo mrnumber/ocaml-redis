@@ -580,6 +580,20 @@ module type Client = sig
 
   (* save and shutdown server *)
   val shutdown : connection -> unit IO.t
+
+  module MassInsert : sig
+    type command = string list
+
+    val set : ?ex:int -> ?px:int -> ?nx:bool -> ?xx:bool -> string -> string -> string list
+
+    val hset : string -> string -> string -> string list
+
+    val write :
+      connection ->
+      command list ->
+      (string list * reply option) list IO.t
+
+  end
 end
 
 module type Cache_params = sig
