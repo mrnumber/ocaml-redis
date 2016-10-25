@@ -591,7 +591,7 @@ module type Client = sig
     val write :
       connection ->
       command list ->
-      (string list * reply option) list IO.t
+      reply list IO.t
 
   end
 end

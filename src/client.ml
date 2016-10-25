@@ -1699,60 +1699,84 @@ module MakeClient(Mode: Mode) = struct
       in
       write connection.out_ch command
 
-    let next_action main_connection (command, resp) =
-      match resp with
-      | Some r -> IO.return (command, resp)
-      | None ->
-        read_reply_exn main_connection.in_ch >>= function
-        | `Ask {slot; host; port} ->
-          connect {host; port} >>= fun connection_moved ->
-          send_request connection_moved command >>= fun () ->
-          disconnect connection_moved >>= fun () ->
-          IO.return (command, None)
-        | `Moved {slot; host; port} ->
-          (* Printf.printf "MOVED. new connection for slot %d %s:%d\n%!" slot host port; *)
-          begin
-            try
-              IO.return (ConnectionSpecMap.find {host; port} main_connection.cluster.connections)
-            with Not_found ->
-              connect {host; port} >>= fun connection_moved ->
-              main_connection.cluster.connections <- ConnectionSpecMap.add {host; port} connection_moved main_connection.cluster.connections;
-              IO.return connection_moved
-          end
-          >>= fun connection_moved ->
-          main_connection.cluster.connections_spec <- SlotMap.add slot {host; port} main_connection.cluster.connections_spec;
-          send_request connection_moved command >>= fun () ->
-          IO.return (command, None)
-        | `Status _
-        | `Int _
-        | `Int64 _
-        | `Bulk _
-        | `Multibulk _ as reply ->
-          IO.return (command, Some reply)
+    type action =
+      | Ask of connection * command
+      | Reply of reply
+      | Moved of connection * command
+      | Command of command
 
-    let read_loop connection responses =
-      let rec loop responses =
-        IO.map_serial (next_action connection) responses >>= fun rs ->
-        let stop = List.fold_left (fun stop r ->
-          match r with
-          | (_, Some _) -> stop && true
-          | (_, None) -> stop && false
-        ) true rs
-        in
-        if not stop then
-          loop rs
-        else
-          IO.return rs
+    let action_of_response main_connection command = function
+      | `Ask {slot; host; port} ->
+        Printf.printf "ASK. new connection for slot %d %s:%d\n%!" slot host port;
+        connect {host; port} >>= fun connection_ask ->
+        send_request connection_ask command >>= fun () ->
+        IO.return (Ask (connection_ask, command))
+      | `Moved {slot; host; port} ->
+        Printf.printf "MOVED. new connection for slot %d %s:%d\n%!" slot host port;
+        begin
+          try
+            IO.return (ConnectionSpecMap.find {host; port} main_connection.cluster.connections)
+          with Not_found ->
+            connect {host; port} >>= fun connection_moved ->
+            main_connection.cluster.connections <- ConnectionSpecMap.add {host; port} connection_moved main_connection.cluster.connections;
+            IO.return connection_moved
+        end
+        >>= fun connection_moved ->
+        main_connection.cluster.connections_spec <- SlotMap.add slot {host; port} main_connection.cluster.connections_spec;
+        send_request connection_moved command >>= fun () ->
+        IO.return (Moved (connection_moved, command))
+      | `Status _
+      | `Int _
+      | `Int64 _
+      | `Bulk _
+      | `Multibulk _ as reply ->
+        IO.return (Reply reply)
+
+    let next_action main_connection stop command =
+      match command with
+      | Reply r ->
+        stop := !stop && true;
+        IO.return (Reply r)
+      | Command command ->
+        stop := !stop && false;
+        read_reply_exn main_connection.in_ch >>=
+        action_of_response main_connection command
+      | Ask (connection, command) ->
+        stop := !stop && false;
+        read_reply_exn connection.in_ch >>=
+        action_of_response main_connection command >>= fun action ->
+        disconnect connection >>= fun () ->
+        IO.return action
+      | Moved (connection, command) ->
+        stop := !stop && false;
+        read_reply_exn connection.in_ch >>=
+        action_of_response main_connection command
+
+    let read_loop connection commands =
+      Printf.printf "Reading responses\n%!";
+      let rec loop commands =
+        let stop = ref false in
+        IO.map_serial (next_action connection stop) commands >>= fun commands ->
+        if not !stop then begin
+          Printf.printf "one response is not stop, looping\n%!";
+          loop commands
+        end else
+          IO.return commands
       in
-      loop responses
+      loop commands
 
     let write connection commands =
       IO.map_serial (fun command ->
         send_request connection command >>= fun () ->
-        IO.return (command, None)
+        IO.return (Command command)
       ) commands
+      >>= fun commands ->
+      read_loop connection commands
       >>= fun responses ->
-      read_loop connection responses
+      IO.map_serial (function
+        | Reply r -> IO.return r
+        | _ -> assert false
+      ) responses
 
     let hset key field value =
       [ "HSET"; key; field; value ]
