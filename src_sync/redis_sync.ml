@@ -19,6 +19,7 @@ module IO = struct
   let return a = a
   let fail e = raise e
   let run a = a
+  let atomic f ch = f ch
 
   let connect host port =
     let port = string_of_int port in

@@ -15,6 +15,7 @@ module IO = struct
   let return = Lwt.return
   let fail = Lwt.fail
   let run = Lwt_main.run
+  let atomic = Lwt_io.atomic
 
   let connect host port =
     let port = string_of_int port in

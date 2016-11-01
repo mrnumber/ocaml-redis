@@ -133,19 +133,24 @@ module Make(IO : S.IO) = struct
     loop [] num_bulk
 
   and read_reply in_ch =
-    IO.input_char in_ch >>= function
-      | '+' ->
-          read_line in_ch >>= fun s -> IO.return (`Status s)
-      | '-' ->
-          read_line in_ch >>= fun s -> IO.return (`Error s)
-      | ':' ->
-          read_integer in_ch
-      | '$' ->
-          read_bulk in_ch
-      | '*' ->
-          read_multibulk in_ch
-      | c ->
-          IO.fail (Unrecognized ("Unexpected char in reply", Char.escaped c))
+    IO.atomic
+      (fun ch ->
+       IO.input_char ch >>= fun c ->
+       match c with
+       | '+' ->
+          read_line ch >>= fun s -> IO.return (`Status s)
+       | '-' ->
+          read_line ch >>= fun s -> IO.return (`Error s)
+       | ':' ->
+          read_integer ch
+       | '$' ->
+          read_bulk ch
+       | '*' ->
+          read_multibulk ch
+       | c ->
+          IO.fail (Unrecognized ("Unexpected char in replyyyy", Char.escaped c))
+      )
+      in_ch
 
   let read_reply_exn in_ch =
     read_reply in_ch >>= function

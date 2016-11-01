@@ -19,6 +19,7 @@ module type IO = sig
   val return : 'a -> 'a t
   val fail : exn -> 'a t
   val run : 'a t -> 'a
+  val atomic : (in_channel -> 'a t) -> in_channel -> 'a t
 
   val in_channel_of_descr : fd -> in_channel
   val out_channel_of_descr : fd -> out_channel
