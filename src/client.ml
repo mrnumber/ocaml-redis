@@ -1641,6 +1641,8 @@ module MakeClient(Mode: Mode) = struct
   module MassInsert = struct
     type command = string list
 
+    let empty = []
+
     let node_id {host; port} =
       Printf.sprintf "%s:%d" host port
 
@@ -1753,12 +1755,10 @@ module MakeClient(Mode: Mode) = struct
         action_of_response main_connection command
 
     let read_loop connection commands =
-      Printf.printf "Reading responses\n%!";
       let rec loop commands =
-        let stop = ref false in
+        let stop = ref true in
         IO.map_serial (next_action connection stop) commands >>= fun commands ->
         if not !stop then begin
-          Printf.printf "one response is not stop, looping\n%!";
           loop commands
         end else
           IO.return commands
@@ -1802,6 +1802,16 @@ module MakeClient(Mode: Mode) = struct
         let args = List.concat [ex; px; nx; xx] in
         let command = List.concat [base_command; args] in
         command
+
+    (* Returns the number of keys removed. *)
+    let del keys =
+      "DEL" :: keys
+
+    let hdel key field =
+      [ "HDEL"; key; field ]
+
+    let hget key field =
+      [ "HGET"; key; field ]
   end
 
 end

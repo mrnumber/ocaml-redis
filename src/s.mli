@@ -582,17 +582,26 @@ module type Client = sig
   val shutdown : connection -> unit IO.t
 
   module MassInsert : sig
-    type command = string list
+    type command
 
-    val set : ?ex:int -> ?px:int -> ?nx:bool -> ?xx:bool -> string -> string -> string list
+    val empty : command
 
-    val hset : string -> string -> string -> string list
+    val set : ?ex:int -> ?px:int -> ?nx:bool -> ?xx:bool -> string -> string -> command
+
+    val hset : string -> string -> string -> command
+
+    (** Delete a key; returns the number of keys removed. *)
+    val del : string list -> command
+
+    (** Removes the specified fields from the hash stored at key. Specified fields that do not exist within this hash are ignored. *)
+    val hdel : string -> string -> command
+
+    val hget : string -> string -> command
 
     val write :
       connection ->
       command list ->
       reply list IO.t
-
   end
 end
 
