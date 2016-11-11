@@ -1709,12 +1709,12 @@ module MakeClient(Mode: Mode) = struct
 
     let action_of_response main_connection command = function
       | `Ask {slot; host; port} ->
-        Printf.printf "ASK. new connection for slot %d %s:%d\n%!" slot host port;
+        Printf.eprintf "create action ASK. new connection for slot %d %s:%d\n%!" slot host port;
         connect {host; port} >>= fun connection_ask ->
         send_request connection_ask command >>= fun () ->
         IO.return (Ask (connection_ask, command))
       | `Moved {slot; host; port} ->
-        Printf.printf "MOVED. new connection for slot %d %s:%d\n%!" slot host port;
+        Printf.eprintf "create action MOVED. new connection for slot %d %s:%d\n%!" slot host port;
         begin
           try
             IO.return (ConnectionSpecMap.find {host; port} main_connection.cluster.connections)
@@ -1732,6 +1732,7 @@ module MakeClient(Mode: Mode) = struct
       | `Int64 _
       | `Bulk _
       | `Multibulk _ as reply ->
+        Printf.eprintf "create action REPLY.\n%!";
         IO.return (Reply reply)
 
     let next_action main_connection stop command =
@@ -1740,16 +1741,19 @@ module MakeClient(Mode: Mode) = struct
         stop := !stop && true;
         IO.return (Reply r)
       | Command command ->
+        Printf.eprintf "ocaml-redis: next_action COMMAND %s\n%!" (String.concat " " command);
         stop := !stop && false;
         read_reply_exn main_connection.in_ch >>=
         action_of_response main_connection command
       | Ask (connection, command) ->
+        Printf.eprintf "ocaml-redis: next_action ASK %s\n%!" (String.concat " " command);
         stop := !stop && false;
         read_reply_exn connection.in_ch >>=
         action_of_response main_connection command >>= fun action ->
         disconnect connection >>= fun () ->
         IO.return action
       | Moved (connection, command) ->
+        Printf.eprintf "ocaml-redis: next_action MOVED %s\n%!" (String.concat " " command);
         stop := !stop && false;
         read_reply_exn connection.in_ch >>=
         action_of_response main_connection command
@@ -1757,6 +1761,7 @@ module MakeClient(Mode: Mode) = struct
     let read_loop connection commands =
       let rec loop commands =
         let stop = ref true in
+        Printf.eprintf "ocaml-redis: read_loop -----------------------------\n%!";
         IO.map_serial (next_action connection stop) commands >>= fun commands ->
         if not !stop then begin
           loop commands
@@ -1767,6 +1772,7 @@ module MakeClient(Mode: Mode) = struct
 
     let write connection commands =
       IO.map_serial (fun command ->
+        Printf.eprintf "ocaml-redis: write command %s\n%!" (String.concat " " command);
         send_request connection command >>= fun () ->
         IO.return (Command command)
       ) commands
