@@ -588,10 +588,10 @@ module type Client = sig
 
     val set : ?ex:int -> ?px:int -> ?nx:bool -> ?xx:bool -> string -> string -> command
 
-    val hset : string -> string -> string -> command
-
     (** Delete a key; returns the number of keys removed. *)
     val del : string list -> command
+
+    val hset : string -> string -> string -> command
 
     (** Removes the specified fields from the hash stored at key. Specified fields that do not exist within this hash are ignored. *)
     val hdel : string -> string -> command

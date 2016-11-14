@@ -417,7 +417,25 @@ module Common(IO: S.IO) = struct
     List.rev !command
 
   let stream connection = connection.stream
+
+  module CommonMassInsert = struct
+    type command = string list
+
+    let empty = []
+
+    type action =
+      | Ask of connection * command
+      | Reply of reply
+      | Moved of connection * command
+      | Command of connection * command
+
+    let rec send_request connection command =
+      write connection.out_ch command
+      >>= fun () ->
+      IO.return connection
+  end
 end
+
 
 module type Mode = sig
 
@@ -563,10 +581,28 @@ module type Mode = sig
          | `Status of string ] list as 'a
     | `Status of string
     ] IO.t
+
+  module ModeMassInsert : sig
+    type command = string list
+
+    val empty : 'a list
+
+    type action =
+        Ask of connection * command
+      | Reply of reply
+      | Moved of connection * command
+      | Command of connection * command
+
+    val send_request : connection -> string list -> connection IO.t
+  end
 end
 
 module SimpleMode(IO : S.IO) = struct
   include Common(IO)
+
+  module ModeMassInsert = struct
+    include CommonMassInsert
+  end
 end
 
 (** The redis cluster mode is only available with redis >= 3.0.
@@ -576,9 +612,6 @@ end
 *)
 module ClusterMode(IO : S.IO) = struct
   include Common(IO)
-
-  let node_id {host; port} =
-    Printf.sprintf "%s:%d" host port
 
   let tag_re = Re_str.regexp {|[^{]*{\([^}]+\)}.*|}
 
@@ -687,6 +720,43 @@ module ClusterMode(IO : S.IO) = struct
       disconnect connection
     ) connection_list
     >>= fun () -> disconnect connection
+
+  module ModeMassInsert = struct
+    include CommonMassInsert
+
+    let send_request connection command =
+      let key =
+        match command with
+        | _command_name :: key :: _ ->
+          (* Printf.printf "send request for slot %d (command %s)\n%!" (get_slot key) (String.concat " " command); *)
+          Some key
+        | "info" :: _
+        | "multi" :: _
+        | "exec" :: _
+        | "slaveof" :: _
+        | "config" :: _
+        | "shutdown" :: _
+        | _ ->
+          None
+      in
+      let connection =
+        match key with
+        | None ->
+          (* Printf.printf "no key for this command. Use default connection.\n%!"; *)
+          connection
+        | Some key ->
+          match get_connection_for_key connection key with
+          | None ->
+            (* Printf.printf "no existing connection for this slot. Use default connection.\n%!"; *)
+            connection
+          | Some connection ->
+            (* Printf.printf "One connection is stored for this slot. Using it.\n%!"; *)
+            connection
+      in
+      write connection.out_ch command
+      >>= fun () ->
+      IO.return connection
+  end
 end
 
 (** Bindings for redis.
@@ -1639,77 +1709,9 @@ module MakeClient(Mode: Mode) = struct
         | e           -> IO.fail e)
 
   module MassInsert = struct
-    type command = string list
+    include ModeMassInsert
 
-    let empty = []
-
-    let node_id {host; port} =
-      Printf.sprintf "%s:%d" host port
-
-    let tag_re = Re_str.regexp {|[^{]*{\([^}]+\)}.*|}
-
-    let get_tag s =
-      if Re_str.string_match tag_re s 0 then
-        Re_str.matched_group 1 s
-      else
-        s
-
-    let get_connection connection slot =
-      try
-        let spec = SlotMap.find slot connection.cluster.connections_spec in
-        let connection = ConnectionSpecMap.find spec connection.cluster.connections in
-        Some (connection)
-      with Not_found ->
-        None
-
-    let get_slot key =
-      let tag = get_tag key in
-      Crc16.crc16 tag mod 16384
-
-    let get_connection_for_key connection key =
-      let slot = get_slot key in
-      get_connection connection slot
-
-    let send_request connection command =
-      let key =
-        match command with
-        | _command_name :: key :: _ ->
-          (* Printf.printf "send request for slot %d (command %s)\n%!" (get_slot key) (String.concat " " command); *)
-          Some key
-        | "info" :: _
-        | "multi" :: _
-        | "exec" :: _
-        | "slaveof" :: _
-        | "config" :: _
-        | "shutdown" :: _
-        | _ ->
-          None
-      in
-      let connection =
-        match key with
-        | None ->
-          (* Printf.printf "no key for this command. Use default connection.\n%!"; *)
-          connection
-        | Some key ->
-          match get_connection_for_key connection key with
-          | None ->
-            (* Printf.printf "no existing connection for this slot. Use default connection.\n%!"; *)
-            connection
-          | Some connection ->
-            (* Printf.printf "One connection is stored for this slot. Using it.\n%!"; *)
-            connection
-      in
-      write connection.out_ch command
-      >>= fun () ->
-      IO.return connection
-
-    type action =
-      | Ask of connection * command
-      | Reply of reply
-      | Moved of connection * command
-      | Command of connection * command
-
-    let action_of_response main_connection command = function
+    let reply main_connection command = function
       | `Ask {slot; host; port} ->
         (* Printf.eprintf "create action ASK. new connection for slot %d %s:%d\n%!" slot host port; *)
         connect {host; port} >>= fun connection_ask ->
@@ -1738,7 +1740,7 @@ module MakeClient(Mode: Mode) = struct
         (* Printf.eprintf "create action REPLY.\n%!"; *)
         IO.return (Reply reply)
 
-    let next_action main_connection stop command =
+    let read_and_reply main_connection stop command =
       match command with
       | Reply r ->
         stop := !stop && true;
@@ -1747,28 +1749,28 @@ module MakeClient(Mode: Mode) = struct
         (* Printf.eprintf "ocaml-redis: next_action COMMAND %s\n%!" (String.concat " " command); *)
         stop := !stop && false;
         read_reply_exn connection.in_ch >>=
-        action_of_response main_connection command
+        reply main_connection command
       | Ask (connection, command) ->
         (* Printf.eprintf "ocaml-redis: next_action ASK %s\n%!" (String.concat " " command); *)
         stop := !stop && false;
         read_reply_exn connection.in_ch >>=
-        action_of_response main_connection command >>= fun action ->
+        reply main_connection command >>= fun action ->
         disconnect connection >>= fun () ->
         IO.return action
       | Moved (connection, command) ->
         (* Printf.eprintf "ocaml-redis: next_action MOVED %s\n%!" (String.concat " " command); *)
         stop := !stop && false;
         read_reply_exn connection.in_ch >>=
-        action_of_response main_connection command
+        reply main_connection command
 
     let read_loop connection commands =
       let rec loop commands =
         let stop = ref true in
         (* Printf.eprintf "ocaml-redis: read_loop -----------------------------\n%!"; *)
-        IO.map_serial (next_action connection stop) commands >>= fun commands ->
-        if not !stop then begin
+        IO.map_serial (read_and_reply connection stop) commands >>= fun commands ->
+        if not !stop then
           loop commands
-        end else
+        else
           IO.return commands
       in
       loop commands
@@ -1786,9 +1788,6 @@ module MakeClient(Mode: Mode) = struct
         | Reply r -> IO.return r
         | _ -> assert false
       ) responses
-
-    let hset key field value =
-      [ "HSET"; key; field; value ]
 
     let set ?ex:(ex=0) ?px:(px=0) ?nx:(nx=false) ?xx:(xx=false) key value =
       match (nx, xx) with
@@ -1812,9 +1811,11 @@ module MakeClient(Mode: Mode) = struct
         let command = List.concat [base_command; args] in
         command
 
-    (* Returns the number of keys removed. *)
     let del keys =
       "DEL" :: keys
+
+    let hset key field value =
+      [ "HSET"; key; field; value ]
 
     let hdel key field =
       [ "HDEL"; key; field ]
