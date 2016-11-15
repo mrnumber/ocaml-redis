@@ -1823,6 +1823,10 @@ module MakeClient(Mode: Mode) = struct
     let hget key field =
       [ "HGET"; key; field ]
 
+    let hincrby key field increment =
+      let increment = string_of_int increment in
+      [ "HINCRBY"; key; field; increment ]
+
     let incr key =
       [ "INCR"; key ]
 

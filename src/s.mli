@@ -598,6 +598,8 @@ module type Client = sig
 
     val hget : string -> string -> command
 
+    val hincrby : string -> string -> int -> command
+
     val write :
       connection ->
       command list ->
