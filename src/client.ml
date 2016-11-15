@@ -1822,6 +1822,12 @@ module MakeClient(Mode: Mode) = struct
 
     let hget key field =
       [ "HGET"; key; field ]
+
+    let incr key =
+      [ "INCR"; key ]
+
+    let decr key =
+      [ "DECR"; key ]
   end
 
 end

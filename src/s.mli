@@ -602,6 +602,10 @@ module type Client = sig
       connection ->
       command list ->
       reply list IO.t
+
+    val incr : string -> command
+
+    val decr : string -> command
   end
 end
 
