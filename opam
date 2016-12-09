@@ -15,11 +15,6 @@ build: [
   ["./configure" "--prefix" prefix "--%{lwt:enable}%-lwt"]
   [make]
 ]
-build-test: [
-  ["./configure" "--prefix" prefix "--enable-tests"]
-  [make]
-  [make "test"]
-]
 build-doc: ["ocaml" "setup.ml" "-doc"]
 remove: ["ocamlfind" "remove" "redis"]
 depends: [
@@ -28,8 +23,6 @@ depends: [
   "base-bytes"
   "uuidm"
   "re"
-  "lwt" {test}
-  "ounit" {test}
 ]
 depopts: ["lwt"]
 available: [ocaml-version >= "4.01.0"]
