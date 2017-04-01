@@ -7,4 +7,5 @@ env:
   - PACKAGE="redis" OCAML_VERSION=4.01 DEPOPTS="lwt"
   - PACKAGE="redis" OCAML_VERSION=4.02 DEPOPTS="lwt"
   - PACKAGE="redis" OCAML_VERSION=4.03 DEPOPTS="lwt"
+  - PACKAGE="redis" OCAML_VERSION=4.04 DEPOPTS="lwt"
   - PACKAGE="redis" OCAML_VERSION=latest DEPOPTS="lwt"
