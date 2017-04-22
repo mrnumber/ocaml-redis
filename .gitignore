@@ -5,3 +5,5 @@
 /*.native
 /*.docdir
 /.gh-pages
+.merlin
+*.install

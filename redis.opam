@@ -10,19 +10,14 @@ bug-reports: "https://github.com/0xffea/ocaml-redis/issues"
 license: "BSD3"
 tags: []
 dev-repo: "https://github.com/0xffea/ocaml-redis.git"
-install: [make "PREFIX=%{prefix}%" "install"]
 build: [
-  ["./configure" "--prefix" prefix "--%{lwt:enable}%-lwt"]
-  [make]
+  ["jbuilder" "build" "--only-packages" "redis" "--root" "."
+   "-j" jobs "@install"]
 ]
-build-doc: ["ocaml" "setup.ml" "-doc"]
-remove: ["ocamlfind" "remove" "redis"]
 depends: [
-  "ocamlfind" {build}
-  "ocamlbuild" {build}
+  "jbuilder" {build}
   "base-bytes"
   "uuidm"
   "re"
 ]
-depopts: ["lwt"]
 available: [ocaml-version >= "4.01.0"]
