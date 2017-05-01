@@ -3,7 +3,7 @@ maintainer: "aluuu@husa.su"
 authors: [
   "Mike Wells"
   "David Höppner"
-  "Alexander Dinu"
+  "Aleksandr Dinu"
 ]
 homepage: "https://github.com/0xffea/ocaml-redis"
 bug-reports: "https://github.com/0xffea/ocaml-redis/issues"
@@ -21,4 +21,4 @@ depends: [
   "re"
   "lwt"
 ]
-available: [ocaml-version >= "4.01.0"]
+available: [ocaml-version >= "4.02.3"]
