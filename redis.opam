@@ -19,5 +19,6 @@ depends: [
   "base-bytes"
   "uuidm"
   "re"
+  "lwt"
 ]
 available: [ocaml-version >= "4.01.0"]
