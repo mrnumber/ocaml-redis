@@ -11,8 +11,7 @@ license: "BSD3"
 tags: []
 dev-repo: "https://github.com/0xffea/ocaml-redis.git"
 build: [
-  ["jbuilder" "build" "--only-packages" "redis-lwt" "--root" "."
-   "-j" jobs "@install"]
+  ["jbuilder" "build" "-p" name "-j" jobs]
 ]
 depends: [
   "jbuilder" {build}
