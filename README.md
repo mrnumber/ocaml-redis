@@ -1,6 +1,6 @@
 # Ocaml-redis
 
-Ocaml bindings for [Redis](http://redis.io/). API documentation can be found [here](http://0xffea.github.io/ocaml-redis/).
+Ocaml bindings for [Redis](http://redis.io/).
 
 Changelog can be found in [CHANGES.md](/CHANGES.md) file.
 
@@ -11,22 +11,10 @@ Changelog can be found in [CHANGES.md](/CHANGES.md) file.
 
 ## Quick start
 
-### With OPAM
+### Installation
+
+`ocaml-redis` implements synchronous and lwt clients. Each of them is in separate package.
 
 ```
-opam install redis
-```
-
-If you want Lwt support, but don't yet have Lwt installed:
-
-```
-opam install lwt redis
-```
-
-### Without OPAM
-
-```
-./configure --enable-lwt
-make
-make install
+opam install redis-sync redis-lwt
 ```
