@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.4
+
+* Port to jbuilder (thanks Rudi Grinberg)
+* *Drop support of ocaml-4.01* (due to port to jbuilder) and run CI against ocaml-4.04
+* Force read_reply to be atomic (thanks Jams Long)
+* Pass hints to getaddrinfo (thanks Doğan Çeçen)
+
 ## 0.3.3
 
 * Fix fd leak for `Redis_lwt.Client.with_connection`, thanks @domsj
