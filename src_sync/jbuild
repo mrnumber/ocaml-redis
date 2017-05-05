@@ -3,5 +3,5 @@
 (library
  ((name redis_sync)
   (wrapped false)
-  (public_name redis.sync)
+  (public_name redis-sync)
   (libraries (redis))))

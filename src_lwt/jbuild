@@ -3,5 +3,5 @@
 (library
  ((name redis_lwt)
   (wrapped false)
-  (public_name redis.lwt)
+  (public_name redis-lwt)
   (libraries (redis lwt.unix lwt))))
