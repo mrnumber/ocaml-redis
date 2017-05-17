@@ -241,7 +241,7 @@ module Make(IO : Redis.S.IO) = struct
     Client.set conn string_key value >>=
     io_assert "Can't set key" ((=) true) >>= fun () ->
     let list_key = redis_string_bucket () in
-    Client.lpush conn list_key value >>=
+    Client.lpush conn list_key [value] >>=
     io_assert "Can't push value to list" ((=) 1) >>= fun () ->
 
     Client.type_of conn string_key >>=
@@ -347,15 +347,15 @@ module Make(IO : Redis.S.IO) = struct
     let key = redis_string_bucket () in
     let value1 = redis_string_bucket () in
     let value2 = redis_string_bucket () in
-    Client.lpush conn key value1 >>=
+    Client.lpush conn key [value1] >>=
     io_assert "Got unexpected list length" ((=) 1) >>= fun () ->
-    Client.rpush conn key value2 >>=
+    Client.rpush conn key [value2] >>=
     io_assert "Got unexpected list length" ((=) 2) >>= fun () ->
     Client.lrange conn key 0 2 >>=
     io_assert "Got unexpected list contents" ((=) [value1; value2]) >>= fun () ->
     Client.del conn [key] >>= fun _ ->
     let key = redis_string_bucket () in
-    Client.lpush conn key value1 >>=
+    Client.lpush conn key [value1] >>=
     io_assert "Got unexpected list length" ((=) 1) >>= fun () ->
     Client.blpop conn [key] 1 >>=
     io_assert "Got unexpected value" ((=) (Some (key, value1))) >>= fun () ->
@@ -496,6 +496,8 @@ module Make(IO : Redis.S.IO) = struct
     with (Client.Unexpected reply as exn) ->
       let rec to_string = function
         | `Status s -> Printf.sprintf "(Status %s)" s
+        | `Moved {Client.slot; host; port} -> Printf.sprintf "MOVED %d %s:%i" slot host port
+        | `Ask {Client.slot; host; port} -> Printf.sprintf "ASK %d %s:%i" slot host port
         | `Error  s -> Printf.sprintf "(Error %s)" s
         | `Int i -> Printf.sprintf "(Int %i)" i
         | `Int64 i -> Printf.sprintf "(Int64 %Li)" i

@@ -14,7 +14,7 @@ Library redis
   Path: src
   Findlibname: redis
   Pack: true
-  Modules: S, Utils, Client, Cache, Mutex
+  Modules: S, Utils, Client, Cache, Mutex, Crc16
   BuildDepends: bytes, re.str, uuidm
 
 Flag lwt
