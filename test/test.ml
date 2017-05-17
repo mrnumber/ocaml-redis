@@ -44,9 +44,9 @@ let rec test_exit_code = function
   | RTodo    _ :: _ ->
     1
 
-module Make(IO : Redis.S.IO) = struct
+module Make(Client : Redis.S.Client) = struct
 
-  module Client = Redis.Client.Make(IO)
+  module IO = Client.IO
 
   let (>>=) = IO.(>>=)
   let (>>|) x f = x >>= fun x -> IO.return (f x)
@@ -241,7 +241,7 @@ module Make(IO : Redis.S.IO) = struct
     Client.set conn string_key value >>=
     io_assert "Can't set key" ((=) true) >>= fun () ->
     let list_key = redis_string_bucket () in
-    Client.lpush conn list_key value >>=
+    Client.lpush conn list_key [value] >>=
     io_assert "Can't push value to list" ((=) 1) >>= fun () ->
 
     Client.type_of conn string_key >>=
@@ -347,15 +347,15 @@ module Make(IO : Redis.S.IO) = struct
     let key = redis_string_bucket () in
     let value1 = redis_string_bucket () in
     let value2 = redis_string_bucket () in
-    Client.lpush conn key value1 >>=
+    Client.lpush conn key [value1] >>=
     io_assert "Got unexpected list length" ((=) 1) >>= fun () ->
-    Client.rpush conn key value2 >>=
+    Client.rpush conn key [value2] >>=
     io_assert "Got unexpected list length" ((=) 2) >>= fun () ->
     Client.lrange conn key 0 2 >>=
     io_assert "Got unexpected list contents" ((=) [value1; value2]) >>= fun () ->
     Client.del conn [key] >>= fun _ ->
     let key = redis_string_bucket () in
-    Client.lpush conn key value1 >>=
+    Client.lpush conn key [value1] >>=
     io_assert "Got unexpected list length" ((=) 1) >>= fun () ->
     Client.blpop conn [key] 1 >>=
     io_assert "Got unexpected value" ((=) (Some (key, value1))) >>= fun () ->
@@ -496,6 +496,8 @@ module Make(IO : Redis.S.IO) = struct
     with (Client.Unexpected reply as exn) ->
       let rec to_string = function
         | `Status s -> Printf.sprintf "(Status %s)" s
+        | `Moved {Client.slot; host; port} -> Printf.sprintf "MOVED %d %s:%i" slot host port
+        | `Ask {Client.slot; host; port} -> Printf.sprintf "ASK %d %s:%i" slot host port
         | `Error  s -> Printf.sprintf "(Error %s)" s
         | `Int i -> Printf.sprintf "(Int %i)" i
         | `Int64 i -> Printf.sprintf "(Int64 %Li)" i
@@ -516,8 +518,9 @@ module Make(IO : Redis.S.IO) = struct
   let teardown () =
     IO.run @@ Client.with_connection redis_spec cleanup_keys
 
-  let test () =
-    let suite = "Redis" >::: [
+  let test name =
+    let suite_name = String.concat "" ["Redis"; name] in
+    let suite = suite_name >::: [
         "test_case_ping" >:: (bracket test_case_ping);
         "test_case_echo" >:: (bracket test_case_echo);
         "test_case_info" >:: (bracket test_case_info);
@@ -539,7 +542,7 @@ module Make(IO : Redis.S.IO) = struct
         "test_case_sorted_set_remove" >:: (bracket test_case_sorted_set_remove);
       ] in
     Random.self_init ();
-    let res = run_test_tt_main suite in
+    let res = run_test_tt suite in
     teardown ();
-    Pervasives.exit @@ test_exit_code res
+    test_exit_code res
 end

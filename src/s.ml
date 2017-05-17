@@ -56,6 +56,12 @@ module type Client = sig
 
   (** {6 Types and exceptions } *)
 
+  type redirection = {
+    slot: int;
+    host: string;
+    port: int;
+  }
+
   type reply = [
     | `Status of string
     | `Error of string
@@ -63,13 +69,29 @@ module type Client = sig
     | `Int64 of Int64.t
     | `Bulk of string option
     | `Multibulk of reply list
+    | `Ask of redirection
+    | `Moved of redirection
   ]
 
-  type connection = private {
-    fd     : IO.fd;
-    in_ch  : IO.in_channel;
-    out_ch : IO.out_channel;
-    stream : reply list IO.stream;
+  (** Server connection info *)
+  type connection_spec = {
+    host : string;
+    port : int;
+  }
+
+  module SlotMap : Map.S with type key = int
+  module ConnectionSpecMap : Map.S with type key = connection_spec
+
+  type cluster_connections = private {
+    mutable connections_spec : connection_spec SlotMap.t;
+    mutable connections : connection ConnectionSpecMap.t;
+  }
+  and connection = private {
+    fd      : IO.fd;
+    in_ch   : IO.in_channel;
+    out_ch  : IO.out_channel;
+    stream  : reply list IO.stream;
+    cluster : cluster_connections;
   }
 
   (** Error responses from server *)
@@ -78,12 +100,6 @@ module type Client = sig
   (** Protocol errors *)
   exception Unexpected of reply
   exception Unrecognized of string * string (* explanation, data *)
-
-  (** Server connection info *)
-  type connection_spec = {
-    host : string;
-    port : int;
-  }
 
   (** Possible BITOP operations *)
   type bit_operation = AND | OR | XOR | NOT
@@ -346,10 +362,10 @@ module type Client = sig
   val lpop : connection -> string -> string option IO.t
 
   (** Prepend one or multiple values to a list *)
-  val lpush : connection -> string -> string -> int IO.t
+  val lpush : connection -> string -> string list -> int IO.t
 
   (** Prepend a value to a list, only if the list exists *)
-  val lpushx : connection -> string -> string -> int IO.t
+  val lpushx : connection -> string -> string list -> int IO.t
 
   (** Get a range of elements from a list *)
   val lrange : connection -> string -> int -> int -> string list IO.t
@@ -370,10 +386,10 @@ module type Client = sig
   val rpoplpush : connection -> string -> string -> string option IO.t
 
   (** Append one or multiple values to a list *)
-  val rpush : connection -> string -> string -> int IO.t
+  val rpush : connection -> string -> string list -> int IO.t
 
   (** Append a value to a list, only if the list exists *)
-  val rpushx : connection -> string -> string -> int IO.t
+  val rpushx : connection -> string -> string list -> int IO.t
 
   (** {6 HyperLogLog commands} *)
 
@@ -565,6 +581,35 @@ module type Client = sig
 
   (* save and shutdown server *)
   val shutdown : connection -> unit IO.t
+
+  module MassInsert : sig
+    type command
+
+    val empty : command
+
+    val set : ?ex:int -> ?px:int -> ?nx:bool -> ?xx:bool -> string -> string -> command
+
+    (** Delete a key; returns the number of keys removed. *)
+    val del : string list -> command
+
+    val hset : string -> string -> string -> command
+
+    (** Removes the specified fields from the hash stored at key. Specified fields that do not exist within this hash are ignored. *)
+    val hdel : string -> string -> command
+
+    val hget : string -> string -> command
+
+    val hincrby : string -> string -> int -> command
+
+    val write :
+      connection ->
+      command list ->
+      reply list IO.t
+
+    val incr : string -> command
+
+    val decr : string -> command
+  end
 end
 
 module type Cache_params = sig
