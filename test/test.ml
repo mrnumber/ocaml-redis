@@ -44,9 +44,9 @@ let rec test_exit_code = function
   | RTodo    _ :: _ ->
     1
 
-module Make(IO : Redis.S.IO) = struct
+module Make(Client : Redis.S.Client) = struct
 
-  module Client = Redis.Client.Make(IO)
+  module IO = Client.IO
 
   let (>>=) = IO.(>>=)
   let (>>|) x f = x >>= fun x -> IO.return (f x)
@@ -518,8 +518,9 @@ module Make(IO : Redis.S.IO) = struct
   let teardown () =
     IO.run @@ Client.with_connection redis_spec cleanup_keys
 
-  let test () =
-    let suite = "Redis" >::: [
+  let test name =
+    let suite_name = String.concat "" ["Redis"; name] in
+    let suite = suite_name >::: [
         "test_case_ping" >:: (bracket test_case_ping);
         "test_case_echo" >:: (bracket test_case_echo);
         "test_case_info" >:: (bracket test_case_info);
@@ -541,7 +542,7 @@ module Make(IO : Redis.S.IO) = struct
         "test_case_sorted_set_remove" >:: (bracket test_case_sorted_set_remove);
       ] in
     Random.self_init ();
-    let res = run_test_tt_main suite in
+    let res = run_test_tt suite in
     teardown ();
-    Pervasives.exit @@ test_exit_code res
+    test_exit_code res
 end
