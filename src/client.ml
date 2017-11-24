@@ -107,6 +107,7 @@ module Common(IO: S.IO) = struct
     IO.really_input in_ch line 0 length >>= fun () ->
     IO.input_char in_ch >>= fun c1 ->
     IO.input_char in_ch >>= fun c2 ->
+    let line = Bytes.to_string line in
     match c1, c2 with
       | '\r', '\n' -> IO.return line
       | _          -> IO.fail (Unrecognized ("Expected terminator", line))
@@ -509,11 +510,11 @@ module type Mode = sig
   end
 
   val write : IO.out_channel -> string list -> unit IO.t
-  val read_fixed_line : int -> IO.in_channel -> bytes IO.t
+  val read_fixed_line : int -> IO.in_channel -> string IO.t
   val read_line : IO.in_channel -> string IO.t
   val classify_error : string -> [> `Ask of redirection | `Error of string | `Moved of redirection ] IO.t
   val read_integer : IO.in_channel -> [> `Int of int | `Int64 of int64 ] IO.t
-  val read_bulk : IO.in_channel -> [> `Bulk of bytes option ] IO.t
+  val read_bulk : IO.in_channel -> [> `Bulk of string option ] IO.t
   val interleave : ('a * 'a) list -> 'a list
   val deinterleave : 'a list -> ('a * 'a) list
   val return_bulk : reply -> string option IO.t
@@ -550,13 +551,13 @@ module type Mode = sig
   val read_reply_exn :
     IO.in_channel ->
     [> `Ask of redirection
-    | `Bulk of bytes option
+    | `Bulk of string option
     | `Int of int
     | `Int64 of int64
     | `Moved of redirection
     | `Multibulk of
          [ `Ask of redirection
-         | `Bulk of bytes option
+         | `Bulk of string option
          | `Error of string
          | `Int of int
          | `Int64 of int64
@@ -569,12 +570,12 @@ module type Mode = sig
   val send_request :
     connection ->
     string list ->
-    [> `Bulk of bytes option
+    [> `Bulk of string option
     | `Int of int
     | `Int64 of int64
     | `Multibulk of
          [ `Ask of redirection
-         | `Bulk of bytes option
+         | `Bulk of string option
          | `Error of string
          | `Int of int
          | `Int64 of int64
