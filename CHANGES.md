@@ -1,5 +1,11 @@
 # Changelog
 
+## WIP
+
+* Fix to work with safe-string flag/compilers (thanks Jacques-Pascal Deplaix)
+
+## 0.3.5
+
 ## 0.3.4
 
 * Port to jbuilder (thanks Rudi Grinberg)
