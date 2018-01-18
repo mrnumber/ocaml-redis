@@ -24,7 +24,7 @@ module type IO = sig
   val in_channel_of_descr : fd -> in_channel
   val out_channel_of_descr : fd -> out_channel
   val input_char : in_channel -> char t
-  val really_input : in_channel -> string -> int -> int -> unit t
+  val really_input : in_channel -> bytes -> int -> int -> unit t
   val output_string : out_channel -> string -> unit t
   val flush : out_channel -> unit t
 
