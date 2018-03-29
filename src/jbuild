@@ -4,4 +4,4 @@
  ((name redis)
   (public_name redis)
   (flags (:standard -safe-string))
-  (libraries (bytes re.str uuidm unix))))
+  (libraries (re.str uuidm unix))))
