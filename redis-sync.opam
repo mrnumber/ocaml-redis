@@ -19,6 +19,5 @@ build-test: [
 depends: [
   "jbuilder" {build}
   "redis"
-  "base-unix"
 ]
 available: [ocaml-version >= "4.02.3"]
