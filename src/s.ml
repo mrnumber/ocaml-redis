@@ -128,6 +128,10 @@ module type Client = sig
   (** Switch to a different db; raises {!Error} if index is invalid. *)
   val select : connection -> int -> unit IO.t
 
+  (** {6 SENTINEL commands } *)
+  val sentinel_masters : connection -> (string * string) list list IO.t
+  val sentinel_get_master_addr_by_name : connection -> string -> (string * string) option IO.t
+
   (** {6 Keys commands} *)
 
   (** Delete a key; returns the number of keys removed. *)
