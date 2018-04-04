@@ -780,6 +780,17 @@ module MakeClient(Mode: Mode) = struct
     let command = [ "SELECT"; index ] in
     send_request connection command >>= return_ok_status
 
+  (** SENTINEL commands *)
+  let sentinel_masters connection =
+    let command = [ "SENTINEL"; "masters"] in
+    send_request connection command
+    >>= return_multibulk
+    >>= IO.map_serial return_key_value_multibulk
+
+  let sentinel_get_master_addr_by_name connection name =
+    let command = [ "SENTINEL"; "GET-MASTER-ADDR-BY-NAME"; name] in
+    send_request connection command >>= return_opt_pair_multibulk
+
   (** Generic key commands *)
 
   (* Returns the number of keys removed. *)
