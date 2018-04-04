@@ -19,7 +19,6 @@ build-test: [
 depends: [
   "jbuilder" {build}
   "redis"
-  "base-unix"
   "lwt"
 ]
 available: [ocaml-version >= "4.02.3"]
