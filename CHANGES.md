@@ -2,6 +2,8 @@
 
 ## WIP
 
+* Add EXPIRE to mass insert command set.
+
 * Fix to work with safe-string flag/compilers (thanks Jacques-Pascal Deplaix)
 
 ## 0.3.5

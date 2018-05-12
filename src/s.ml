@@ -596,6 +596,8 @@ module type Client = sig
     (** Delete a key; returns the number of keys removed. *)
     val del : string list -> command
 
+    val expire : string -> int -> command
+
     val hset : string -> string -> string -> command
 
     (** Removes the specified fields from the hash stored at key. Specified fields that do not exist within this hash are ignored. *)

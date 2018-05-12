@@ -1811,6 +1811,10 @@ module MakeClient(Mode: Mode) = struct
     let del keys =
       "DEL" :: keys
 
+    let expire key seconds =
+      let seconds = string_of_int seconds in
+      [ "EXPIRE"; key; seconds ]
+
     let hset key field value =
       [ "HSET"; key; field; value ]
 
