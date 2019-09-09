@@ -1,4 +1,4 @@
-opam-version: "1.2"
+opam-version: "2.0"
 maintainer: "aluuu@husa.su"
 authors: [
   "Mike Wells"
@@ -8,17 +8,16 @@ authors: [
 homepage: "https://github.com/0xffea/ocaml-redis"
 bug-reports: "https://github.com/0xffea/ocaml-redis/issues"
 license: "BSD3"
-tags: []
-dev-repo: "https://github.com/0xffea/ocaml-redis.git"
+tags: ["redis" "lwt"]
+dev-repo: "git+https://github.com/0xffea/ocaml-redis.git"
+synopsis: "Redis client (lwt interface)"
 build: [
   ["dune" "build" "-p" name "-j" jobs]
-]
-build-test: [
-  ["dune" "runtest" "-p" name "-j" jobs]
+  ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]
 depends: [
   "dune" {build & >= "1.0"}
   "redis"
   "lwt"
+  "ocaml" { >= "4.02.3" }
 ]
-available: [ocaml-version >= "4.02.3"]
