@@ -5,10 +5,6 @@ module IO = struct
   type in_channel = Pervasives.in_channel
   type out_channel = Pervasives.out_channel
 
-  type socket_domain = Unix.socket_domain
-  type socket_type = Unix.socket_type
-  type socket_addr = Unix.sockaddr
-
   type 'a stream = 'a Stream.t
   type stream_count = int
 

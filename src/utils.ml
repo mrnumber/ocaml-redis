@@ -27,7 +27,7 @@ module List = struct
   let rec pairs_of_list l = match l with
     | k :: (v :: rest) ->
       Option.map (fun l -> (k, v) :: l) (pairs_of_list rest)
-    | k :: [] -> None
+    | _ :: [] -> None
     | [] -> Some []
 end
 

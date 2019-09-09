@@ -11,10 +11,10 @@ license: "BSD3"
 tags: []
 dev-repo: "https://github.com/0xffea/ocaml-redis.git"
 build: [
-  ["jbuilder" "build" "-p" name "-j" jobs]
+  ["dune" "build" "-p" name "-j" jobs]
 ]
 depends: [
-  "jbuilder" {build}
+  "dune"
   "base-unix"
   "uuidm"
   "re"
