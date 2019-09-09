@@ -616,11 +616,11 @@ end
 module ClusterMode(IO : S.IO) = struct
   include Common(IO)
 
-  let tag_re = Re_str.regexp {|[^{]*{\([^}]+\)}.*|}
+  let tag_re = Re.Str.regexp {|[^{]*{\([^}]+\)}.*|}
 
   let get_tag s =
-    if Re_str.string_match tag_re s 0 then
-      Re_str.matched_group 1 s
+    if Re.Str.string_match tag_re s 0 then
+      Re.Str.matched_group 1 s
     else
       s
 
