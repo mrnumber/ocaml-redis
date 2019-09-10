@@ -3,7 +3,7 @@
  (modules test)
  (wrapped false)
  (flags :standard -safe-string -warn-error -a)
- (libraries redis oUnit))
+ (libraries containers redis oUnit))
 
 (executable
  (name test_sync)
@@ -19,6 +19,7 @@
 
 (alias
  (name runtest)
+ (locks test)
  (deps
   (:< test_lwt.exe))
  (action
@@ -26,6 +27,7 @@
 
 (alias
  (name runtest)
+ (locks test)
  (deps
   (:< test_sync.exe))
  (action
