@@ -1,5 +1,3 @@
-open Core.Std
-
 let subscribe_sync host port =
   let open Redis_sync.Client in
 
@@ -11,7 +9,7 @@ let subscribe_sync host port =
     | _ -> () in
 
   let print_stream_value v =
-    List.iter ~f:print_value v;
+    List.iter print_value v;
     print_string "\n";
     flush stdout in
 
