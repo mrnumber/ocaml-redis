@@ -1,0 +1,4 @@
+(executables
+ (libraries threads containers redis-lwt redis-sync)
+ (flags :standard -safe-string)
+ (names examples))

@@ -325,7 +325,7 @@ module Common(IO: S.IO) = struct
     return_bulk_multibulk reply >>= function
       | []               -> IO.return None
       | [Some x; Some y] -> IO.return (Some (x, y))
-      | x                -> IO.fail (Invalid_argument "Expected nil or two-element multi-bulk")
+      | _                -> IO.fail (Invalid_argument "Expected nil or two-element multi-bulk")
 
   let return_info_bulk reply =
     return_bulk reply >>= function
@@ -368,7 +368,7 @@ module Common(IO: S.IO) = struct
         disconnect c >>= fun () ->
         IO.fail e)
 
-  let rec send_request connection command =
+  let send_request connection command =
     write connection.out_ch command >>= fun () ->
     read_reply_exn connection.in_ch >>= function
     | `Status _
@@ -382,7 +382,7 @@ module Common(IO: S.IO) = struct
   let sort_command
       ?by
       ?limit (* offset, limit *)
-      ?(get=[])
+      ?get:(_=[])
       ?order
       ?(alpha=false)
       ?store
@@ -432,7 +432,7 @@ module Common(IO: S.IO) = struct
       | Moved of connection * command
       | Command of connection * command
 
-    let rec send_request connection command =
+    let send_request connection command =
       write connection.out_ch command
       >>= fun () ->
       IO.return connection
@@ -616,11 +616,11 @@ end
 module ClusterMode(IO : S.IO) = struct
   include Common(IO)
 
-  let tag_re = Re_str.regexp {|[^{]*{\([^}]+\)}.*|}
+  let tag_re = Re.Str.regexp {|[^{]*{\([^}]+\)}.*|}
 
   let get_tag s =
-    if Re_str.string_match tag_re s 0 then
-      Re_str.matched_group 1 s
+    if Re.Str.string_match tag_re s 0 then
+      Re.Str.matched_group 1 s
     else
       s
 
@@ -657,7 +657,7 @@ module ClusterMode(IO : S.IO) = struct
     let rec loop connection =
       write connection.out_ch command >>= fun () ->
       read_reply_exn connection.in_ch >>= function
-      | `Ask {slot; host; port} ->
+      | `Ask {slot=_; host; port} ->
         connect {host; port} >>= fun connection_moved ->
         let res = loop connection_moved in
         disconnect connection_moved >>= fun () ->
@@ -709,8 +709,8 @@ module ClusterMode(IO : S.IO) = struct
   let disconnect connection =
     let connection_list = ConnectionSpecMap.bindings connection.cluster.connections in
     connection.cluster.connections <- ConnectionSpecMap.empty;
-    IO.iter (fun ({host; port}, connection) ->
-      (* Printf.printf "disconnecting %s:%d\n%!" host port; *)
+    IO.iter (fun (_cinfo, connection) ->
+      (* Printf.printf "disconnecting %s:%d\n%!" _cinfo.host _cinfo.port; *)
       disconnect connection
     ) connection_list
     >>= fun () -> disconnect connection
@@ -1709,7 +1709,7 @@ module MakeClient(Mode: Mode) = struct
     include ModeMassInsert
 
     let reply main_connection command = function
-      | `Ask {slot; host; port} ->
+      | `Ask {slot=_; host; port} ->
         (* Printf.eprintf "create action ASK. new connection for slot %d %s:%d\n%!" slot host port; *)
         connect {host; port} >>= fun connection_ask ->
         send_request connection_ask command >>= fun connection_ask ->
@@ -1725,7 +1725,8 @@ module MakeClient(Mode: Mode) = struct
             main_connection.cluster.connections <- ConnectionSpecMap.add {host; port} connection_moved main_connection.cluster.connections;
             IO.return connection_moved
         end
-        >>= fun connection_moved ->
+        (* TODO: why is this ignored? *)
+        >>= fun _connection_moved ->
         main_connection.cluster.connections_spec <- SlotMap.add slot {host; port} main_connection.cluster.connections_spec;
         send_request main_connection command >>= fun connection_moved ->
         IO.return (Moved (connection_moved, command))

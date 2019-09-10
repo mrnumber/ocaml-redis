@@ -1,6 +1,5 @@
 open OUnit
 open Redis
-open Sys
 
 let redis_test_host () =
   try
@@ -71,8 +70,10 @@ module Make(Client : Redis.S.Client) = struct
   (* INFO *)
   let test_case_info conn =
     Client.info conn >>| fun result ->
-    (let tcp_port = List.filter (fun (k, v) -> k = "tcp_port") result
-                    |> List.hd |> snd in
+    (let tcp_port =
+       CCList.find_map (fun (k,v) -> if k = "tcp_port" then Some v else None) result
+       |> CCOpt.get_lazy (fun () -> assert_failure "didn't find any port")
+     in
      assert_bool "Got wrong data about port with INFO command"
        (int_of_string tcp_port = redis_test_port()))
 
@@ -333,10 +334,11 @@ module Make(Client : Redis.S.Client) = struct
     let rec scan_keys cursor keys =
       Client.scan conn cursor >>= fun (next_cursor, next_keys) ->
       let next_keys = List.concat [keys; next_keys] in
-      if next_cursor == 0 then
+      if next_cursor = 0 then
         IO.return next_keys
       else
-        scan_keys next_cursor next_keys in
+        scan_keys next_cursor next_keys
+    in
     let scan_all_keys () = scan_keys 0 [] in
     Client.keys conn "*" >>= fun keys ->
     scan_all_keys () >>=
@@ -504,12 +506,7 @@ module Make(Client : Redis.S.Client) = struct
         | `Bulk None -> "(Bulk None)"
         | `Bulk (Some s) -> Printf.sprintf "(Bulk (Some %s))" s
         | `Multibulk replies ->
-           let x =
-             List.map
-               to_string
-               replies
-             |> String.concat "; "
-           in
+           let x = List.map to_string replies |> String.concat "; " in
            Printf.sprintf "Multibulk [ %s; ]" x
       in
       Printf.printf "Got unexpected reply: %s" (to_string reply);
@@ -519,7 +516,7 @@ module Make(Client : Redis.S.Client) = struct
     IO.run @@ Client.with_connection redis_spec cleanup_keys
 
   let test name =
-    let suite_name = String.concat "" ["Redis"; name] in
+    let suite_name = "redis." ^ name in
     let suite = suite_name >::: [
         "test_case_ping" >:: (bracket test_case_ping);
         "test_case_echo" >:: (bracket test_case_echo);
