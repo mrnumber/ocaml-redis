@@ -20,4 +20,6 @@ depends: [
   "redis"
   "lwt"
   "ocaml" { >= "4.02.3" }
+  "ounit" {with-test}
+  "containers" {with-test}
 ]

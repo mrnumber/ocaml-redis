@@ -21,7 +21,4 @@ depends: [
   "uuidm"
   "re"
   "ocaml" { >= "4.02.3" }
-  "ounit" {with-test}
-  "lwt" {with-test}
-  "containers" {with-test}
 ]

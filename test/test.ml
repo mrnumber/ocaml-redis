@@ -1,5 +1,4 @@
 open OUnit
-open Redis
 
 let redis_test_host () =
   try

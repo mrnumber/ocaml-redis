@@ -19,4 +19,6 @@ depends: [
   "dune" {>= "1.0"}
   "redis"
   "ocaml" { >= "4.02.3" }
+  "ounit" {with-test}
+  "containers" {with-test}
 ]
