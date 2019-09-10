@@ -54,7 +54,7 @@ module type Client = sig
     val to_string : t -> string
   end
 
-  (** {6 Types and exceptions } *)
+  (** {2 Types and exceptions } *)
 
   type redirection = {
     slot: int;
@@ -104,14 +104,14 @@ module type Client = sig
   (** Possible BITOP operations *)
   type bit_operation = AND | OR | XOR | NOT
 
-  (** {6 Connection handling } *)
+  (** {2 Connection handling } *)
 
   val connect : connection_spec -> connection IO.t
   val disconnect : connection -> unit IO.t
   val with_connection : connection_spec -> (connection -> 'a IO.t) -> 'a IO.t
   val stream : connection -> reply list IO.stream
 
-  (** {6 Connection commands } *)
+  (** {2 Connection commands } *)
 
   (** Authenticate to server. *)
   val auth : connection -> string -> unit IO.t
@@ -128,11 +128,11 @@ module type Client = sig
   (** Switch to a different db; raises {!Error} if index is invalid. *)
   val select : connection -> int -> unit IO.t
 
-  (** {6 SENTINEL commands } *)
+  (** {2 SENTINEL commands } *)
   val sentinel_masters : connection -> (string * string) list list IO.t
   val sentinel_get_master_addr_by_name : connection -> string -> (string * string) option IO.t
 
-  (** {6 Keys commands} *)
+  (** {2 Keys commands} *)
 
   (** Delete a key; returns the number of keys removed. *)
   val del : connection -> string list -> int IO.t
@@ -220,7 +220,7 @@ module type Client = sig
   (** Inspect the internals of Redis objects; returns the number of seconds since the object stored at the specified key is idle. *)
   val object_idletime: connection -> string -> int option IO.t
 
-  (** {6 String commands} *)
+  (** {2 String commands} *)
 
   (** Append a value to a key; returns length of string after append. *)
   val append : connection -> string -> string -> int IO.t
@@ -295,7 +295,7 @@ module type Client = sig
   (** Returns the length of the string value stored at key. An error is returned when key holds a non-string value. *)
   val strlen : connection -> string -> int IO.t
 
-  (** {6 Hash commands} *)
+  (** {2 Hash commands} *)
 
   (** Removes the specified fields from the hash stored at key. Specified fields that do not exist within this hash are ignored. *)
   val hdel : connection -> string -> string -> bool IO.t
@@ -342,7 +342,7 @@ module type Client = sig
   (** Returns all values in the hash stored at key. *)
   val hvals : connection -> string -> string list IO.t
 
-  (** {6 List commands} *)
+  (** {2 List commands} *)
 
   (** Remove and get the first element in a list, or block until one is available *)
   val blpop : connection -> string list -> int -> (string * string) option IO.t
@@ -395,7 +395,7 @@ module type Client = sig
   (** Append a value to a list, only if the list exists *)
   val rpushx : connection -> string -> string list -> int IO.t
 
-  (** {6 HyperLogLog commands} *)
+  (** {2 HyperLogLog commands} *)
 
   (** Adds values to the HyperLogLog data structure. *)
   val pfadd : connection -> string -> string list -> bool IO.t
@@ -406,7 +406,7 @@ module type Client = sig
   (** Merge multiple HyperLogLog values into an unique value that will approximate the cardinality of the union of the observed Sets of the source HyperLogLog structures. *)
   val pfmerge : connection -> string list -> unit IO.t
 
-  (** {6 Set commands} *)
+  (** {2 Set commands} *)
 
   (* Returns true if member was added, false otherwise. *)
   val sadd : connection -> string -> string -> bool IO.t
@@ -445,7 +445,7 @@ module type Client = sig
   (* Like SUNION, but store result in destination. Returns size of result. *)
   val sunionstore : connection -> string -> string list -> int IO.t
 
-  (** {6 Pub/sub commands} *)
+  (** {2 Pub/sub commands} *)
 
   (* Post a message to a channel. Returns number of clients that received the message. *)
   val publish : connection -> string -> string -> int IO.t
@@ -468,7 +468,7 @@ module type Client = sig
   (* Unsubscribes the client from the given patterns. *)
   val punsubscribe : connection -> string list -> unit IO.t
 
-  (** {6 Sorted set commands} *)
+  (** {2 Sorted set commands} *)
 
   (* Add one or more members to a sorted set, or update its score if it already exists. *)
   val zadd : connection ->
@@ -526,7 +526,7 @@ module type Client = sig
   (* Returns the reversed rank of member in the sorted set stored at key. *)
   val zrevrank : connection -> string -> string -> int option IO.t
 
-  (** {6 Transaction commands} *)
+  (** {2 Transaction commands} *)
 
   (* Marks the start of a transaction block. Subsequent commands will be queued for atomic execution using EXEC. *)
   val multi : connection -> unit IO.t
@@ -545,7 +545,7 @@ module type Client = sig
 
   val queue : (unit -> 'a IO.t) -> unit IO.t
 
-  (** {6 Scripting commands} *)
+  (** {2 Scripting commands} *)
 
   (* Load the specified Lua script into the script cache. Returns the SHA1 digest of the script for use with EVALSHA. *)
   val script_load : connection -> string -> string IO.t
@@ -556,7 +556,7 @@ module type Client = sig
   (* Evaluates a script cached on the server side by its SHA1 digest. *)
   val evalsha : connection -> string -> string list -> string list -> reply IO.t
 
-  (** {6 Server} *)
+  (** {2 Server} *)
 
   val bgrewriteaof : connection -> unit IO.t
 

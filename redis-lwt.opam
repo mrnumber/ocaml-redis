@@ -1,5 +1,5 @@
 opam-version: "2.0"
-maintainer: "aluuu@husa.su"
+maintainer: "Simon Cruanes"
 authors: [
   "Mike Wells"
   "David Höppner"
@@ -14,6 +14,7 @@ synopsis: "Redis client (lwt interface)"
 build: [
   ["dune" "build" "-p" name "-j" jobs]
   ["dune" "runtest" "-p" name "-j" jobs] {with-test}
+  ["dune" "build" "@doc" "-p" name "-j" jobs] {with-doc}
 ]
 depends: [
   "dune" {build & >= "1.0"}
@@ -22,4 +23,5 @@ depends: [
   "ocaml" { >= "4.02.3" }
   "ounit" {with-test}
   "containers" {with-test}
+  "odoc" {with-doc}
 ]
