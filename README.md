@@ -6,20 +6,26 @@ Ocaml bindings for [Redis](http://redis.io/).
 
 Changelog can be found in [CHANGES.md](/CHANGES.md) file.
 
-
 ## Dependencies
 
-* [Lwt](http://ocsigen.org/lwt/install) (optional)
+- For `redis-lwt`, [Lwt](http://ocsigen.org/lwt/install) is needed.
 
 ## Quick start
 
 ### Installation
 
-`ocaml-redis` implements synchronous and lwt clients. Each of them is in separate package.
+`ocaml-redis` implements synchronous and lwt clients. Each of them is in a separate package.
 
-```
-opam install redis-sync redis-lwt
-```
+- synchronous version:
+  ```
+  opam install redis-sync
+  ```
+- lwt version:
+  ```
+  opam install redis-lwt
+  ```
+
+**Note**: connections are not safe to share among threads.
 
 ## Documentation
 
