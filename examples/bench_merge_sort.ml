@@ -79,11 +79,17 @@ let run (self:t) : unit =
   in
   sort id_list;
   Printf.printf "result: %s\n%!" (str_of_list self id_list);
-  assert (
-    let l = C.lrange c id_list 0 self.n |> List.map int_of_string in
-    CCList.is_sorted ~cmp:CCInt.compare l);
+  let l = C.lrange c id_list 0 self.n |> List.map int_of_string in
   C.del self.c [id_list] |> ignore_int;
   C.del self.c ["bms:cur_id"] |> ignore_int;
+  (* must be sorted *)
+  assert ( CCList.is_sorted ~cmp:CCInt.compare l);
+  (* same length *)
+  assert (List.length l = List.length self.l);
+  (* same elements *)
+  assert (
+    let module IS = CCSet.Make(CCInt) in
+    IS.equal (IS.of_list l) (IS.of_list self.l));
   ()
 
 let run ?(n=100_000) host port : unit =

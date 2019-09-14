@@ -3,3 +3,12 @@
  (flags :standard -safe-string)
  (modes native)
  (name examples))
+
+
+(alias
+  (name runtest)
+  (locks ../test)
+  (action
+    (progn
+      (echo "do a merge sort on redis for n=100")
+      (run ./examples.exe --name bench_merge_sort -n 100))))

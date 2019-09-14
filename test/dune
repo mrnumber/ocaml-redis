@@ -19,7 +19,7 @@
 
 (alias
  (name runtest)
- (locks test)
+ (locks ../test)
  (package redis-lwt)
  (deps
   (:< test_lwt.exe))
@@ -28,7 +28,7 @@
 
 (alias
  (name runtest)
- (locks test)
+ (locks ../test)
  (package redis-sync)
  (deps
   (:< test_sync.exe))
