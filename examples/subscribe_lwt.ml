@@ -3,12 +3,7 @@ open Lwt.Infix
 let subscribe_lwt host port =
   let open Redis_lwt.Client in
 
-  let print_value = function
-    | `Bulk Some str -> Lwt_io.printf "%s " str
-    | `Error str -> Lwt_io.printf "error: %s " str
-    | `Status str -> Lwt_io.printf "status: %s " str
-    | `Int i -> Lwt_io.printf "int: %d " i
-    | _ -> Lwt.return () in
+  let print_value v = Lwt_io.printf "%s " (string_of_reply v) in
 
   let print_stream_value v =
     Lwt_list.iter_s print_value v >>= fun () ->

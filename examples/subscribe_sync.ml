@@ -1,12 +1,7 @@
 let subscribe_sync host port =
   let open Redis_sync.Client in
 
-  let print_value = function
-    | `Bulk Some str -> Printf.printf "%s " str
-    | `Error str -> Printf.printf "error: %s " str
-    | `Status str -> Printf.printf "status: %s " str
-    | `Int i -> Printf.printf "int: %d " i
-    | _ -> () in
+  let print_value f = Printf.printf "%s" (string_of_reply f) in
 
   let print_stream_value v =
     List.iter print_value v;

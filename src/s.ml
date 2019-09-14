@@ -62,16 +62,18 @@ module type Client = sig
     port: int;
   }
 
-  type reply = [
-    | `Status of string
-    | `Error of string
-    | `Int of int
-    | `Int64 of Int64.t
-    | `Bulk of string option
-    | `Multibulk of reply list
-    | `Ask of redirection
-    | `Moved of redirection
-  ]
+  type reply =
+    | Ask of redirection
+    | Bulk of string option
+    | Error of string
+    | Int of int
+    | Int64 of Int64.t
+    | Moved of redirection
+    | Multibulk of reply list
+    | Status of string
+
+  val string_of_reply : reply -> string
+  (** For debugging purpose *)
 
   (** Server connection info *)
   type connection_spec = {
@@ -95,7 +97,7 @@ module type Client = sig
   }
 
   (** Error responses from server *)
-  exception Error of string
+  exception Redis_error of string
 
   (** Protocol errors *)
   exception Unexpected of reply

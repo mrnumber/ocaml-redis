@@ -10,17 +10,28 @@ module Common(IO: S.IO) = struct
   }
 
   (* reply from server *)
-  type reply = [
-    | `Status of string
-    | `Error of string
-    | `Int of int
-    | `Int64 of Int64.t
-    | `Bulk of string option
-    | `Multibulk of reply list
-    | `Ask of redirection
-    | `Moved of redirection
-  ]
+  type reply =
+    | Ask of redirection
+    | Bulk of string option
+    | Error of string
+    | Int of int
+    | Int64 of Int64.t
+    | Moved of redirection
+    | Multibulk of reply list
+    | Status of string
 
+  let rec string_of_reply = function
+    | Status s -> Printf.sprintf "(Status %s)" s
+    | Moved {slot; host; port} -> Printf.sprintf "MOVED %d %s:%i" slot host port
+    | Ask {slot; host; port} -> Printf.sprintf "ASK %d %s:%i" slot host port
+    | Error  s -> Printf.sprintf "(Error %s)" s
+    | Int i -> Printf.sprintf "(Int %i)" i
+    | Int64 i -> Printf.sprintf "(Int64 %Li)" i
+    | Bulk None -> "(Bulk None)"
+    | Bulk (Some s) -> Printf.sprintf "(Bulk (Some %s))" s
+    | Multibulk replies ->
+      let x = List.map string_of_reply replies |> String.concat "; " in
+      Printf.sprintf "Multibulk [ %s; ]" x
 
   (* server connection info *)
   type connection_spec = {
@@ -59,7 +70,7 @@ module Common(IO: S.IO) = struct
   }
 
   (* error responses from server *)
-  exception Error of string
+  exception Redis_error of string
 
   (* these signal protocol errors *)
   exception Unexpected of reply
@@ -140,39 +151,39 @@ module Common(IO: S.IO) = struct
          | Some (host, port) ->
            let slot = int_of_string slot in
            let port = int_of_string port in
-           IO.return (`Ask {slot; host; port})
+           IO.return (Ask {slot; host; port})
          | None ->
-           IO.return (`Error s)
+           IO.return (Error s)
         )
       | "MOVED" :: slot :: host :: [] ->
         (match Utils.String.split host ":" with
          | Some (host, port) ->
            let slot = int_of_string slot in
            let port = int_of_string port in
-           IO.return (`Moved {slot; host; port})
+           IO.return (Moved {slot; host; port})
          | None ->
-           IO.return (`Error s)
+           IO.return (Error s)
         )
       | _ ->
-        IO.return (`Error s)
+        IO.return (Error s)
     with Invalid_argument _ ->
-      IO.return (`Error s)
+      IO.return (Error s)
 
   (* this expects the initial ':' to have already been consumed *)
   let read_integer in_ch =
     read_line in_ch >>= fun line ->
     IO.return
-      (try `Int (int_of_string line)
-       with _ -> `Int64 (Int64.of_string line))
+      (try Int (int_of_string line)
+       with _ -> Int64 (Int64.of_string line))
 
   (* this expects the initial '$' to have already been consumed *)
   let read_bulk in_ch =
     read_line in_ch >>= fun line ->
       match int_of_string line with
-        | -1 -> IO.return (`Bulk None)
+        | -1 -> IO.return (Bulk None)
         | n when n >= 0 ->
             read_fixed_line n in_ch >>= fun data ->
-            IO.return (`Bulk (Some data))
+            IO.return (Bulk (Some data))
         | n ->
             IO.fail (Unrecognized ("Invalid bulk length", string_of_int n))
 
@@ -180,7 +191,7 @@ module Common(IO: S.IO) = struct
   let rec read_multibulk in_ch =
     let rec loop acc n =
       if n <= 0 then
-        IO.return (`Multibulk (List.rev acc))
+        IO.return (Multibulk (List.rev acc))
       else
         read_reply in_ch >>= fun data -> loop (data :: acc) (n - 1)
     in
@@ -192,7 +203,7 @@ module Common(IO: S.IO) = struct
     IO.atomic (fun in_ch ->
         IO.input_char in_ch >>= function
         | '+' ->
-          read_line in_ch >>= fun s -> IO.return (`Status s)
+          read_line in_ch >>= fun s -> IO.return (Status s)
         | '-' ->
           read_line in_ch >>= classify_error
         | ':' ->
@@ -207,20 +218,20 @@ module Common(IO: S.IO) = struct
 
   let read_reply_exn in_ch =
     read_reply in_ch >>= function
-      | `Status _
-      | `Int _
-      | `Int64 _
-      | `Bulk _
-      | `Multibulk _ as reply ->
+      | Status _
+      | Int _
+      | Int64 _
+      | Bulk _
+      | Multibulk _ as reply ->
           IO.return reply
-      | `Moved {slot; host; port} ->
+      | Moved {slot; host; port} ->
           let msg = Printf.sprintf "MOVED %d %s:%i" slot host port in
-          IO.fail (Error msg)
-      | `Ask {slot; host; port} ->
+          IO.fail (Redis_error msg)
+      | Ask {slot; host; port} ->
           let msg = Printf.sprintf "ASK %d %s:%i" slot host port in
-          IO.fail (Error msg)
-      | `Error msg ->
-          IO.fail (Error msg)
+          IO.fail (Redis_error msg)
+      | Error msg ->
+          IO.fail (Redis_error msg)
 
   let interleave list =
     let rec loop acc = function
@@ -239,29 +250,29 @@ module Common(IO: S.IO) = struct
     loop [] list
 
   let return_bulk = function
-    | `Bulk b -> IO.return b
+    | Bulk b -> IO.return b
     | x       -> IO.fail (Unexpected x)
 
   let return_no_nil_bulk = function
-    | `Bulk (Some b) -> IO.return b
+    | Bulk (Some b) -> IO.return b
     | x              -> IO.fail (Unexpected x)
 
   let return_bool = function
-    | `Int 0 -> IO.return false
-    | `Int 1 -> IO.return true
+    | Int 0 -> IO.return false
+    | Int 1 -> IO.return true
     | x      -> IO.fail (Unexpected x)
 
   let return_status = function
-    | `Status _ as s -> IO.return s
+    | Status s -> IO.return s
     | x              -> IO.fail (Unexpected x)
 
   let return_expected_status expected = function
-    | `Status s when expected = s -> IO.return ()
+    | Status s when expected = s -> IO.return ()
     | x                           -> IO.fail (Unexpected x)
 
   let return_ok_or_nil = function
-    | `Status "OK" -> IO.return true
-    | `Bulk None   -> IO.return false
+    | Status "OK" -> IO.return true
+    | Bulk None   -> IO.return false
     | x            -> IO.fail (Unexpected x)
 
   let return_ok_status =
@@ -271,38 +282,33 @@ module Common(IO: S.IO) = struct
     return_expected_status "QUEUED"
 
   let return_int = function
-    | `Int n -> IO.return n
+    | Int n -> IO.return n
     | x      -> IO.fail (Unexpected x)
 
-  let return_int64 = function
-    | `Int n   -> IO.return (Int64.of_int n)
-    | `Int64 n -> IO.return n
-    | x        -> IO.fail (Unexpected x)
-
   let return_float = function
-    | `Int n   -> IO.return (float_of_int n)
-    | `Int64 n -> IO.return (Int64.to_float n)
-    | `Bulk (Some str) -> IO.return (float_of_string str)
+    | Int n   -> IO.return (float_of_int n)
+    | Int64 n -> IO.return (Int64.to_float n)
+    | Bulk (Some str) -> IO.return (float_of_string str)
     | x        -> IO.fail (Unexpected x)
 
   let return_int_option = function
-    | `Bulk None -> IO.return None
-    | `Int n     -> IO.return (Some n)
+    | Bulk None -> IO.return None
+    | Int n     -> IO.return (Some n)
     | x          -> IO.fail (Unexpected x)
 
   let return_float_option = function
-    | `Bulk None -> IO.return None
+    | Bulk None -> IO.return None
     | x -> return_float x >>= fun f -> IO.return (Some f)
 
   let return_multibulk = function
-    | `Multibulk m -> IO.return m
+    | Multibulk m -> IO.return m
     | x            -> IO.fail (Unexpected x)
 
   let return_bulk_multibulk reply =
     try
       return_multibulk reply >>= fun list ->
       IO.return (List.map (function
-        | `Bulk b -> b
+        | Bulk b -> b
         | x -> raise (Unexpected x)
       ) list)
     with e -> IO.fail e
@@ -371,12 +377,13 @@ module Common(IO: S.IO) = struct
   let send_request connection command =
     write connection.out_ch command >>= fun () ->
     read_reply_exn connection.in_ch >>= function
-    | `Status _
-    | `Int _
-    | `Int64 _
-    | `Bulk _
-    | `Multibulk _ as reply ->
+    | Status _
+    | Int _
+    | Int64 _
+    | Bulk _
+    | Multibulk _ as reply ->
       IO.return reply
+    | Error _ | Ask _ | Moved _ -> assert false
 
   (* generate command for SORT *)
   let sort_command
@@ -427,10 +434,10 @@ module Common(IO: S.IO) = struct
     let empty = []
 
     type action =
-      | Ask of connection * command
-      | Reply of reply
-      | Moved of connection * command
-      | Command of connection * command
+      | M_ask of connection * command
+      | M_reply of reply
+      | M_moved of connection * command
+      | M_command of connection * command
 
     let send_request connection command =
       write connection.out_ch command
@@ -452,16 +459,18 @@ module type Mode = sig
     port : int;
   }
 
-  type reply = [
-    | `Ask of redirection
-    | `Bulk of string option
-    | `Error of string
-    | `Int of int
-    | `Int64 of Int64.t
-    | `Moved of redirection
-    | `Multibulk of reply list
-    | `Status of string
-  ]
+  type reply =
+    | Ask of redirection
+    | Bulk of string option
+    | Error of string
+    | Int of int
+    | Int64 of Int64.t
+    | Moved of redirection
+    | Multibulk of reply list
+    | Status of string
+
+  val string_of_reply : reply -> string
+  (** For debugging purpose *)
 
   type connection_spec = {
     host : string;
@@ -483,7 +492,7 @@ module type Mode = sig
     cluster : cluster_connections;
   }
 
-  exception Error of string
+  exception Redis_error of string
   exception Unexpected of reply
   exception Unrecognized of string * string
 
@@ -510,23 +519,15 @@ module type Mode = sig
   end
 
   val write : IO.out_channel -> string list -> unit IO.t
-  val read_fixed_line : int -> IO.in_channel -> string IO.t
-  val read_line : IO.in_channel -> string IO.t
-  val classify_error : string -> [> `Ask of redirection | `Error of string | `Moved of redirection ] IO.t
-  val read_integer : IO.in_channel -> [> `Int of int | `Int64 of int64 ] IO.t
-  val read_bulk : IO.in_channel -> [> `Bulk of string option ] IO.t
   val interleave : ('a * 'a) list -> 'a list
-  val deinterleave : 'a list -> ('a * 'a) list
   val return_bulk : reply -> string option IO.t
   val return_no_nil_bulk : reply -> string IO.t
   val return_bool : reply -> bool IO.t
-  val return_status : reply -> [> `Status of string ] IO.t
-  val return_expected_status : string -> reply -> unit IO.t
+  val return_status : reply -> string IO.t
   val return_ok_or_nil : reply -> bool IO.t
   val return_ok_status : reply -> unit IO.t
   val return_queued_status : reply -> unit IO.t
   val return_int : reply -> int IO.t
-  val return_int64 : reply -> Int64.t IO.t
   val return_float : reply -> float IO.t
   val return_int_option : reply -> int option IO.t
   val return_float_option : reply -> float option IO.t
@@ -549,41 +550,12 @@ module type Mode = sig
   val stream : connection -> reply list IO.stream
 
   val read_reply_exn :
-    IO.in_channel ->
-    [> `Ask of redirection
-    | `Bulk of string option
-    | `Int of int
-    | `Int64 of int64
-    | `Moved of redirection
-    | `Multibulk of
-         [ `Ask of redirection
-         | `Bulk of string option
-         | `Error of string
-         | `Int of int
-         | `Int64 of int64
-         | `Moved of redirection
-         | `Multibulk of 'a
-         | `Status of string ] list as 'a
-    | `Status of string
-    ] IO.t
+    IO.in_channel -> reply IO.t
 
   val send_request :
     connection ->
     string list ->
-    [> `Bulk of string option
-    | `Int of int
-    | `Int64 of int64
-    | `Multibulk of
-         [ `Ask of redirection
-         | `Bulk of string option
-         | `Error of string
-         | `Int of int
-         | `Int64 of int64
-         | `Moved of redirection
-         | `Multibulk of 'a
-         | `Status of string ] list as 'a
-    | `Status of string
-    ] IO.t
+    reply IO.t
 
   module ModeMassInsert : sig
     type command = string list
@@ -591,10 +563,10 @@ module type Mode = sig
     val empty : 'a list
 
     type action =
-        Ask of connection * command
-      | Reply of reply
-      | Moved of connection * command
-      | Command of connection * command
+      | M_ask of connection * command
+      | M_reply of reply
+      | M_moved of connection * command
+      | M_command of connection * command
 
     val send_request : connection -> string list -> connection IO.t
   end
@@ -642,27 +614,27 @@ module ClusterMode(IO : S.IO) = struct
 
   let read_reply_exn in_ch =
     read_reply in_ch >>= function
-    | `Moved _
-    | `Ask _
-    | `Status _
-    | `Int _
-    | `Int64 _
-    | `Bulk _
-    | `Multibulk _ as reply ->
+    | Moved _
+    | Ask _
+    | Status _
+    | Int _
+    | Int64 _
+    | Bulk _
+    | Multibulk _ as reply ->
       IO.return reply
-    | `Error msg ->
-      IO.fail (Error msg)
+    | Error msg ->
+      IO.fail (Redis_error msg)
 
   let send_request' main_connection command =
     let rec loop connection =
       write connection.out_ch command >>= fun () ->
-      read_reply_exn connection.in_ch >>= function
-      | `Ask {slot=_; host; port} ->
+      read_reply connection.in_ch >>= function
+      | Ask {slot=_; host; port} ->
         connect {host; port} >>= fun connection_moved ->
         let res = loop connection_moved in
         disconnect connection_moved >>= fun () ->
         res
-      | `Moved {slot; host; port} ->
+      | Moved {slot; host; port} ->
         begin
           try
             IO.return (ConnectionSpecMap.find {host; port} main_connection.cluster.connections)
@@ -674,12 +646,13 @@ module ClusterMode(IO : S.IO) = struct
         >>= fun connection_moved ->
         main_connection.cluster.connections_spec <- SlotMap.add slot {host; port} main_connection.cluster.connections_spec;
         loop connection_moved
-      | `Status _
-      | `Int _
-      | `Int64 _
-      | `Bulk _
-      | `Multibulk _ as reply ->
+      | Status _
+      | Int _
+      | Int64 _
+      | Bulk _
+      | Multibulk _ as reply ->
         IO.return reply
+      | Error msg -> IO.fail (Redis_error msg)
     in
     loop main_connection
 
@@ -765,7 +738,7 @@ module MakeClient(Mode: Mode) = struct
     let command = [ "PING" ] in
     IO.try_bind
       (fun () -> send_request connection command)
-      (function `Status "PONG" -> IO.return true
+      (function Status "PONG" -> IO.return true
               | _ -> IO.return false)
 
       (fun e -> IO.fail e)
@@ -838,14 +811,14 @@ module MakeClient(Mode: Mode) = struct
     let command = ["SCAN"; cursor; "MATCH"; pattern; "COUNT"; count] in
     send_request connection command >>= return_multibulk >>=
       function
-      | `Bulk Some next_cursor :: `Multibulk keys :: [] ->
+      | Bulk Some next_cursor :: Multibulk keys :: [] ->
          let next_cursor = int_of_string next_cursor in
          IO.map_serial (function
-             | `Bulk (Some s) -> IO.return s
+             | Bulk (Some s) -> IO.return s
              | x -> IO.fail (Unexpected x) >>= fun () -> IO.return "") keys
          >>= fun keys ->
          IO.return (next_cursor, keys)
-      | _ -> IO.fail (Error "SCAN returned unexpected result")
+      | _ -> IO.fail (Redis_error "SCAN returned unexpected result")
 
   (* Move key to a different db; returns true if key was moved, false otherwise. *)
   let move connection key index =
@@ -935,13 +908,12 @@ module MakeClient(Mode: Mode) = struct
   let type_of connection key =
     let command = [ "TYPE"; key ] in
     send_request connection command >>= return_status >>= function
-      | `Status "string" -> IO.return `String
-      | `Status "list"   -> IO.return `List
-      | `Status "zset"   -> IO.return `Zset
-      | `Status "hash"   -> IO.return `Hash
-      | `Status "none"   -> IO.return `None (* key doesn't exist *)
-      | `Status x        -> IO.fail (Unrecognized ("Unexpected TYPE result", x))
-      | x                -> IO.fail (Unexpected x)
+      | "string" -> IO.return `String
+      | "list"   -> IO.return `List
+      | "zset"   -> IO.return `Zset
+      | "hash"   -> IO.return `Hash
+      | "none"   -> IO.return `None (* key doesn't exist *)
+      | x        -> IO.fail (Unrecognized ("Unexpected TYPE result", x))
 
   let dump connection key =
     let command = ["DUMP"; key] in
@@ -972,19 +944,19 @@ module MakeClient(Mode: Mode) = struct
   let object_refcount connection key =
     let command = ["OBJECT"; "REFCOUNT"; key] in
     send_request connection command >>= function
-      | `Int x -> IO.return (Some x)
+      | Int x -> IO.return (Some x)
       | _ -> IO.return None
 
   let object_encoding connection key =
     let command = ["OBJECT"; "ENCODING"; key] in
     send_request connection command >>= function
-      | `Bulk x -> IO.return x
+      | Bulk x -> IO.return x
       | _ -> IO.return None
 
   let object_idletime connection key =
     let command = ["OBJECT"; "IDLETIME"; key] in
     send_request connection command >>= function
-      | `Int x -> IO.return (Some x)
+      | Int x -> IO.return (Some x)
       | _ -> IO.return None
 
   (** String commands *)
@@ -1192,15 +1164,15 @@ module MakeClient(Mode: Mode) = struct
     let command = ["HSCAN"; key; cursor; "MATCH"; pattern; "COUNT"; count] in
     send_request connection command >>= return_multibulk >>=
       function
-      | `Bulk Some next_cursor :: `Multibulk keys :: [] ->
+      | Bulk Some next_cursor :: Multibulk keys :: [] ->
          let next_cursor = int_of_string next_cursor in
          IO.map_serial (function
-             | `Bulk (Some s) -> IO.return s
+             | Bulk (Some s) -> IO.return s
              | x -> IO.fail (Unexpected x) >>= fun () -> IO.return "") keys
          >>= fun entries ->
          let pairs = Utils.List.pairs_of_list entries |> Utils.Option.default [] in
          IO.return (next_cursor, pairs)
-      | _ -> IO.fail (Error "HSCAN returned unexpected result")
+      | _ -> IO.fail (Redis_error "HSCAN returned unexpected result")
 
   let hvals connection key =
     let command = [ "HVALS"; key ] in
@@ -1225,8 +1197,8 @@ module MakeClient(Mode: Mode) = struct
     let timeout = string_of_int timeout in
     let command = [ "BRPOPLPUSH"; source; destination; timeout ] in
     send_request connection command >>= function
-      | `Multibulk []        -> IO.return None
-      | `Bulk (Some element) -> IO.return (Some element)
+      | Multibulk []        -> IO.return None
+      | Bulk (Some element) -> IO.return (Some element)
       | x                    -> IO.fail (Unexpected x)
 
   (* Out of range or nonexistent key will return None. *)
@@ -1709,12 +1681,12 @@ module MakeClient(Mode: Mode) = struct
     include ModeMassInsert
 
     let reply main_connection command = function
-      | `Ask {slot=_; host; port} ->
+      | Ask {slot=_; host; port} ->
         (* Printf.eprintf "create action ASK. new connection for slot %d %s:%d\n%!" slot host port; *)
         connect {host; port} >>= fun connection_ask ->
         send_request connection_ask command >>= fun connection_ask ->
-        IO.return (Ask (connection_ask, command))
-      | `Moved {slot; host; port} ->
+        IO.return (M_ask (connection_ask, command))
+      | Moved {slot; host; port} ->
         (* Printf.eprintf "create action MOVED. new connection for slot %d %s:%d\n%!" slot host port; *)
         begin
           try
@@ -1729,33 +1701,34 @@ module MakeClient(Mode: Mode) = struct
         >>= fun _connection_moved ->
         main_connection.cluster.connections_spec <- SlotMap.add slot {host; port} main_connection.cluster.connections_spec;
         send_request main_connection command >>= fun connection_moved ->
-        IO.return (Moved (connection_moved, command))
-      | `Status _
-      | `Int _
-      | `Int64 _
-      | `Bulk _
-      | `Multibulk _ as reply ->
+        IO.return (M_moved (connection_moved, command))
+      | Status _
+      | Int _
+      | Int64 _
+      | Bulk _
+      | Multibulk _ as reply ->
         (* Printf.eprintf "create action REPLY.\n%!"; *)
-        IO.return (Reply reply)
+        IO.return (M_reply reply)
+      | Error e -> IO.fail (Mode.Redis_error e)
 
     let read_and_reply main_connection stop command =
       match command with
-      | Reply r ->
+      | M_reply r ->
         stop := !stop && true;
-        IO.return (Reply r)
-      | Command (connection, command) ->
+        IO.return (M_reply r)
+      | M_command (connection, command) ->
         (* Printf.eprintf "ocaml-redis: next_action COMMAND %s\n%!" (String.concat " " command); *)
         stop := !stop && false;
         read_reply_exn connection.in_ch >>=
         reply main_connection command
-      | Ask (connection, command) ->
+      | M_ask (connection, command) ->
         (* Printf.eprintf "ocaml-redis: next_action ASK %s\n%!" (String.concat " " command); *)
         stop := !stop && false;
         read_reply_exn connection.in_ch >>=
         reply main_connection command >>= fun action ->
         disconnect connection >>= fun () ->
         IO.return action
-      | Moved (connection, command) ->
+      | M_moved (connection, command) ->
         (* Printf.eprintf "ocaml-redis: next_action MOVED %s\n%!" (String.concat " " command); *)
         stop := !stop && false;
         read_reply_exn connection.in_ch >>=
@@ -1777,13 +1750,13 @@ module MakeClient(Mode: Mode) = struct
       IO.map_serial (fun command ->
         (* Printf.eprintf "ocaml-redis: write command %s\n%!" (String.concat " " command); *)
         send_request connection command >>= fun connection ->
-        IO.return (Command (connection, command))
+        IO.return (M_command (connection, command))
       ) commands
       >>= fun commands ->
       read_loop connection commands
       >>= fun responses ->
       IO.map_serial (function
-        | Reply r -> IO.return r
+        | M_reply r -> IO.return r
         | _ -> assert false
       ) responses
 
