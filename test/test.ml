@@ -505,8 +505,8 @@ module Make(Client : Redis.S.Client) = struct
         | Client.Bulk None -> "(Bulk None)"
         | Client.Bulk (Some s) -> Printf.sprintf "(Bulk (Some %s))" s
         | Client.Multibulk replies ->
-           let x = List.map to_string replies |> String.concat "; " in
-           Printf.sprintf "Multibulk [ %s; ]" x
+          let x = List.map to_string replies |> String.concat "; " in
+          Printf.sprintf "Multibulk [ %s; ]" x
       in
       Printf.printf "Got unexpected reply: %s" (to_string reply);
       raise exn

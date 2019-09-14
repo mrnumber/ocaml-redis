@@ -11,8 +11,8 @@ module Make(IO : S.IO)(Client : S.Client with module IO = IO) = struct
 
     let update_ttl () =
       Client.ttl conn mutex >>= function
-        | None -> Client.expire conn mutex ltime >>= fun _ -> IO.return ()
-        | _ -> IO.return () in
+      | None -> Client.expire conn mutex ltime >>= fun _ -> IO.return ()
+      | _ -> IO.return () in
 
     let rec loop () =
       Client.setnx conn mutex id >>= function
@@ -39,11 +39,11 @@ module Make(IO : S.IO)(Client : S.Client with module IO = IO) = struct
     let id = Uuidm.(to_string (create `V4)) in
     acquire conn ?atime ?ltime mutex id >>= fun _ ->
     IO.catch
-    (* try *) (fun () ->
-      fn () >>= fun res ->
-      release conn mutex id >>= fun _ ->
-      IO.return res)
-    (* catch *) (function e ->
-      release conn mutex id >>= fun _ ->
-      IO.fail e)
+      (* try *) (fun () ->
+        fn () >>= fun res ->
+        release conn mutex id >>= fun _ ->
+        IO.return res)
+      (* catch *) (function e ->
+        release conn mutex id >>= fun _ ->
+        IO.fail e)
 end

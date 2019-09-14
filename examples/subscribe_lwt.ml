@@ -15,6 +15,6 @@ let subscribe_lwt host port =
     >>= fun conn -> Redis_lwt.Client.subscribe conn ["example"]
     >>= fun () -> Lwt.return conn
     >>= fun conn -> Lwt_stream.iter_s print_stream_value (stream conn)
-    in
+  in
   Lwt_main.run t;
   ()

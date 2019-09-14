@@ -24,9 +24,9 @@ module IO = struct
       match getaddrinfo host port [AI_FAMILY PF_INET] with
       | ai::_ -> ai
       | [] ->
-          match getaddrinfo host port [AI_FAMILY PF_INET6] with
-          | ai::_ -> ai
-          | []    -> failwith "Could not resolve redis host!"
+        match getaddrinfo host port [AI_FAMILY PF_INET6] with
+        | ai::_ -> ai
+        | []    -> failwith "Could not resolve redis host!"
     in
     let fd = Unix.socket addr_info.Unix.ai_family Unix.SOCK_STREAM 0 in
     try

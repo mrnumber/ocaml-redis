@@ -12,7 +12,7 @@ module Make(IO : S.IO)(Client : S.Client with module IO = IO)(Params : S.Cache_p
     match Params.cache_expiration with 
     | None -> IO.return () 
     | Some cache_expiration -> 
-        Client.expire r key cache_expiration >>= (fun _ -> IO.return ())
+      Client.expire r key cache_expiration >>= (fun _ -> IO.return ())
 
   let get r key =
     let key = Params.cache_key key in

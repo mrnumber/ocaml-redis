@@ -18,9 +18,9 @@ module List = struct
       match l with
       | [] -> accum
       | hd :: tl ->
-         match f hd with
-         | Some x -> loop tl (x :: accum)
-         | None -> loop tl accum
+        match f hd with
+        | Some x -> loop tl (x :: accum)
+        | None -> loop tl accum
     in
     List.rev (loop l [])
 
