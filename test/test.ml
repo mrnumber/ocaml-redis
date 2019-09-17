@@ -45,6 +45,8 @@ let rec test_exit_code = function
 module Make(Client : Redis.S.Client) : sig
   val suite : string -> OUnit.test
   val teardown : unit -> unit
+  val redis_spec : Client.connection_spec
+  val bracket : (Client.connection -> 'a Client.IO.t) -> unit -> 'a
 end = struct
 
   module IO = Client.IO
@@ -511,10 +513,11 @@ end = struct
           let x = List.map to_string replies |> String.concat "; " in
           Printf.sprintf "Multibulk [ %s; ]" x
       in
-      Printf.printf "Got unexpected reply: %s" (to_string reply);
+      Printf.eprintf "Got unexpected reply: %s\n" (to_string reply);
       raise exn
 
   let teardown () =
+    flush stderr;
     IO.run @@ Client.with_connection redis_spec cleanup_keys
 
   let suite name =
