@@ -42,7 +42,10 @@ let rec test_exit_code = function
   | RTodo    _ :: _ ->
     1
 
-module Make(Client : Redis.S.Client) = struct
+module Make(Client : Redis.S.Client) : sig
+  val suite : string -> OUnit.test
+  val teardown : unit -> unit
+end = struct
 
   module IO = Client.IO
 
@@ -514,9 +517,9 @@ module Make(Client : Redis.S.Client) = struct
   let teardown () =
     IO.run @@ Client.with_connection redis_spec cleanup_keys
 
-  let test name =
+  let suite name =
     let suite_name = "redis." ^ name in
-    let suite = suite_name >::: [
+    suite_name >::: [
         "test_case_ping" >:: (bracket test_case_ping);
         "test_case_echo" >:: (bracket test_case_echo);
         "test_case_info" >:: (bracket test_case_info);
@@ -536,9 +539,5 @@ module Make(Client : Redis.S.Client) = struct
         "test_case_hyper_log_log" >:: (bracket test_case_hyper_log_log);
         "test_case_sorted_set" >:: (bracket test_case_sorted_set);
         "test_case_sorted_set_remove" >:: (bracket test_case_sorted_set_remove);
-      ] in
-    Random.self_init ();
-    let res = run_test_tt suite in
-    teardown ();
-    test_exit_code res
+      ]
 end

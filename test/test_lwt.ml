@@ -1,11 +1,16 @@
 module Test_lwt = Test.Make(Redis_lwt.Client)
 module Test_lwt_cluster = Test.Make(Redis_lwt.ClusterClient)
 
-let _ =
-  [
-    (Test_lwt.test, "lwt-simple");
-    (Test_lwt_cluster.test, "lwt-cluster")
+open OUnit
+
+let suite =
+  "lwt" >::: [
+    Test_lwt.suite "simple";
+    Test_lwt_cluster.suite "cluster";
   ]
-  |> List.map (fun (t, name) -> t name)
-  |> List.fold_left max 0
-  |> Pervasives.exit
+
+let () =
+  Random.self_init ();
+  let res = run_test_tt suite in
+  Test_lwt.teardown ();
+  exit @@ Test.test_exit_code res
