@@ -13,6 +13,7 @@ module type IO = sig
   val sleep : float -> unit t
 
   val (>>=) : 'a t -> ('a -> 'b t) -> 'b t
+  val (>|=) : 'a t -> ('a -> 'b) -> 'b t
   val catch : (unit -> 'a t) -> (exn -> 'a t) -> 'a t
   val try_bind : (unit -> 'a t) -> ('a -> 'b t) -> (exn -> 'b t) -> 'b t
   val ignore_result : 'a t -> unit

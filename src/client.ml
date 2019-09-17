@@ -307,10 +307,11 @@ module Common(IO: S.IO) = struct
   let return_bulk_multibulk reply =
     try
       return_multibulk reply >>= fun list ->
-      IO.return (List.map (function
-          | Bulk b -> b
-          | x -> raise (Unexpected x)
-        ) list)
+      IO.map
+        (function
+          | Bulk b -> IO.return b
+          | x -> IO.fail (Unexpected x))
+        list
     with e -> IO.fail e
 
   (* multibulks all of whose entries are not nil *)
@@ -1023,7 +1024,7 @@ module MakeClient(Mode: Mode) = struct
   let set connection ?ex:(ex=0) ?px:(px=0) ?nx:(nx=false) ?xx:(xx=false) key value =
     match (nx, xx) with
     | (true, true) ->
-      raise (Invalid_argument "SET command can contain only one of NX or XX options.")
+      IO.fail (Invalid_argument "SET command can contain only one of NX or XX options.")
     | _ ->
       let ex = match ex with
         | 0 -> []

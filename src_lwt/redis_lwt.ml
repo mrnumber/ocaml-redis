@@ -9,6 +9,7 @@ module IO = struct
   type stream_count = unit
 
   let (>>=) = Lwt.(>>=)
+  let (>|=) = Lwt.(>|=)
   let catch = Lwt.catch
   let try_bind = Lwt.try_bind
   let ignore_result = Lwt.ignore_result
