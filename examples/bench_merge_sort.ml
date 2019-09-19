@@ -39,33 +39,33 @@ let run (self:t) : unit Lwt.t =
   Printf.printf "initial (len %d): %s\n%!" len s_list;
   (* merge [id1] and [id2] into [into] *)
   let merge (id1:string) (id2:string) ~into : unit Lwt.t =
-    Lwt.async (fun () ->
+    (*Lwt.async (fun () ->
         str_of_list self id1 >>= fun (_,s1) ->
         str_of_list self id2 >>= fun (_,s2) ->
         str_of_list self into >|= fun (_,sinto) ->
         Printf.printf "merge %s=%s and %s=%s into %s=%s\n%!"
-          id1 s1 id2 s2 into sinto);
+          id1 s1 id2 s2 into sinto);*)
     assert (id1 <> id2);
     let rec loop () : unit Lwt.t =
       let len1 = P.with_connection self.pool (fun c -> C.llen c id1) in
       let len2 = P.with_connection self.pool (fun c -> C.llen c id2) in
       len1 >>= fun len1 ->
       len2 >>= fun len2 ->
-      Printf.printf "  len1=%d, len2=%d\n%!" len1 len2;
+      (* Printf.printf "  len1=%d, len2=%d\n%!" len1 len2; *)
       if len1=0 && len2=0 then Lwt.return ()
       else if len1=0 then (
         P.with_connection self.pool
           (fun c -> C.lrange c id2 0 len2 >>= C.rpush c into) |> ignore_int
       ) else if len2=0 then (
         P.with_connection self.pool
-          (fun c -> C.lrange c id1 0 len2 >>= C.rpush c into) |> ignore_int
+          (fun c -> C.lrange c id1 0 len1 >>= C.rpush c into) |> ignore_int
       ) else (
         let x =
           P.with_connection self.pool
-            (fun c -> C.lpop c id1 >|= unwrap_opt_ >|= int_of_string)
+            (fun c -> C.lpop c id1 >|= unwrap_opt_ "lpop id1" >|= int_of_string)
         and y =
           P.with_connection self.pool
-            (fun c -> C.lpop c id2 >|= unwrap_opt_ >|= int_of_string)
+            (fun c -> C.lpop c id2 >|= unwrap_opt_ "lpop id2" >|= int_of_string)
         in
         x >>= fun x ->
         y >>= fun y ->
@@ -83,7 +83,7 @@ let run (self:t) : unit Lwt.t =
         )
       )
     in
-    Lwt.async (fun () -> str_of_list self into >|= fun (_,s) -> Printf.printf "  -> %s\n%!" s);
+    (* str_of_list self into >>= fun (_,s) -> Printf.printf "  -> [%s]=%s\n%!" into s; *)
     loop ()
   in
   (* now recursively do merge sort *)
@@ -140,7 +140,7 @@ let run ?(n=100_000) host port : unit =
   let spec = {C.host; port} in
   let start = Unix.gettimeofday () in
   Lwt_main.run
-    (P.with_pool ~size:2 spec
+    (P.with_pool ~size:32 spec
        (fun pool ->
           let st = {n; pool; l=mk_list n} in
           run st));
