@@ -1,5 +1,6 @@
 opam-version: "2.0"
 maintainer: "Simon Cruanes"
+version: "0.4"
 authors: [
   "Mike Wells"
   "David Höppner"
@@ -17,8 +18,8 @@ build: [
   ["dune" "build" "@doc" "-p" name "-j" jobs] {with-doc}
 ]
 depends: [
-  "dune" {build & >= "1.0"}
-  "redis"
+  "dune" {>= "1.0"}
+  "redis" { = version }
   "lwt"
   "ocaml" { >= "4.02.3" }
   "ounit" {with-test}

@@ -2,6 +2,19 @@
 
 ## WIP
 
+## 0.4
+
+- feat: also have `>|=` in IO; in Cache, atomic set+expire
+- fix(api): export type of cache
+- add printer for `reply`
+- migrate opam files to 2.0
+- migration to dune
+- fix: redis-lwt: pass fd type
+
+- add some benchmarks and integration tests
+- update doc generation, fix errors for odoc
+- reindent, style, etc.
+
 ## 0.3.7
 
 * Add EXPIRE to mass insert command set (thanks Malthe Borch)
