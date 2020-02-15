@@ -501,15 +501,15 @@ end = struct
       IO.run @@ Client.with_connection redis_spec test_case
     with (Client.Unexpected reply as exn) ->
       let rec to_string = function
-        | Client.Status s -> Printf.sprintf "(Status %s)" s
-        | Client.Moved {Client.slot; host; port} -> Printf.sprintf "MOVED %d %s:%i" slot host port
-        | Client.Ask {Client.slot; host; port} -> Printf.sprintf "ASK %d %s:%i" slot host port
-        | Client.Error  s -> Printf.sprintf "(Error %s)" s
-        | Client.Int i -> Printf.sprintf "(Int %i)" i
-        | Client.Int64 i -> Printf.sprintf "(Int64 %Li)" i
-        | Client.Bulk None -> "(Bulk None)"
-        | Client.Bulk (Some s) -> Printf.sprintf "(Bulk (Some %s))" s
-        | Client.Multibulk replies ->
+        | `Status s -> Printf.sprintf "(Status %s)" s
+        | `Moved {Client.slot; host; port} -> Printf.sprintf "MOVED %d %s:%i" slot host port
+        | `Ask {Client.slot; host; port} -> Printf.sprintf "ASK %d %s:%i" slot host port
+        | `Error  s -> Printf.sprintf "(Error %s)" s
+        | `Int i -> Printf.sprintf "(Int %i)" i
+        | `Int64 i -> Printf.sprintf "(Int64 %Li)" i
+        | `Bulk None -> "(Bulk None)"
+        | `Bulk (Some s) -> Printf.sprintf "(Bulk (Some %s))" s
+        | `Multibulk replies ->
           let x = List.map to_string replies |> String.concat "; " in
           Printf.sprintf "Multibulk [ %s; ]" x
       in

@@ -8,6 +8,7 @@
 (alias
   (name runtest)
   (locks ../test)
+  (package redis-lwt)
   (action
     (progn
       (echo "do a merge sort on redis for n=100")
