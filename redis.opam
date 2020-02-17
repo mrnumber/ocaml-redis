@@ -14,7 +14,7 @@ dev-repo: "git+https://github.com/0xffea/ocaml-redis.git"
 synopsis: "Redis client"
 build: [
   ["dune" "build" "-p" name "-j" jobs]
-  ["dune" "runtest" "-p" name "-j" jobs] {with-test}
+  # ["dune" "runtest" "-p" name "-j" jobs] {with-test} # need network
   ["dune" "build" "@doc" "-p" name "-j" jobs] {with-doc}
 ]
 depends: [
