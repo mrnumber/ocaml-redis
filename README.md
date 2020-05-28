@@ -1,4 +1,4 @@
-# Ocaml-redis [![Build Status](https://travis-ci.org/0xffea/ocaml-redis.svg?branch=master)](https://travis-ci.org/0xffea/ocaml-redis) [![build](https://github.com/0xffea/ocaml-reis/workflows/build/badge.svg)](https://github.com/0xffea/ocaml-redis/actions)
+# OCaml-redis [![Build](https://github.com/0xffea/ocaml-redis/workflows/Build%20redis/badge.svg)](https://github.com/0xffea/ocaml-redis/actions)
 
 Ocaml bindings for [Redis](http://redis.io/).
 
