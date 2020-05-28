@@ -14,10 +14,10 @@ jobs:
       with:
         ocaml-version: ${{ matrix.ocaml-version }}
     - run: sudo apt-get install redis
-      if: ${{ matrix.operating-system }} == 'ubuntu-latest'
+      if: ${{ matrix.operating-system  == 'ubuntu-latest'}}
     - run: opam pin -n .
     - run: opam depext -yt redis redis-sync
     - run: opam install -t . --deps-only
     - run: opam exec -- dune build
     - run: opam exec -- dune runtest
-      if: ${{ matrix.operating-system }} == 'ubuntu-latest'
+      if: ${{ matrix.operating-system  == 'ubuntu-latest'}}
