@@ -2,5 +2,5 @@
  (name redis_sync)
  (wrapped false)
  (public_name redis-sync)
- (flags :standard -safe-string)
+ (flags :standard -safe-string -warn-error -3)
  (libraries redis unix))
