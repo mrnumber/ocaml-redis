@@ -1,6 +1,6 @@
 module Test_sync = Test.Make(Redis_sync.Client)
 module Test_sync_cluster = Test.Make(Redis_sync.ClusterClient)
-open OUnit
+open OUnit2
 
 let suite =
   "sync" >::: [
@@ -10,6 +10,7 @@ let suite =
 
 let () =
   Random.self_init ();
-  let res = run_test_tt suite in
+  let code = ref 0 in
+  OUnit2.run_test_tt_main ~exit:(fun i -> code := i) suite;
   Test_sync.teardown ();
-  exit @@ Test.test_exit_code res
+  exit !code

@@ -22,7 +22,7 @@ depends: [
   "redis" { = version }
   "lwt"
   "ocaml" { >= "4.02.3" }
-  "ounit" {with-test}
+  "ounit2" {with-test}
   "containers" {with-test}
   "odoc" {with-doc}
 ]
