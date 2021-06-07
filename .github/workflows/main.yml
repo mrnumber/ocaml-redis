@@ -19,11 +19,17 @@ jobs:
     - uses: ocaml/setup-ocaml@v2
       with:
         ocaml-compiler: ${{ matrix.ocaml-compiler }}
-    - run: sudo apt-get install redis
-      if: ${{ matrix.os == 'ubuntu-latest'}}
     - run: opam pin -n .
-    - run: opam depext -yt redis redis-sync
     - run: opam install -t . --deps-only
     - run: opam exec -- dune build
+    - name: Install docker compose
+      run: sudo pip install docker-compose
+      if: ${{ matrix.os == 'ubuntu-latest'}}
+    - name: Start containers
+      run: docker-compose up -d
+      if: ${{ matrix.os == 'ubuntu-latest'}}
     - run: opam exec -- dune runtest
+      if: ${{ matrix.os == 'ubuntu-latest'}}
+    - name: Stop containers
+      run: docker-compose down
       if: ${{ matrix.os == 'ubuntu-latest'}}

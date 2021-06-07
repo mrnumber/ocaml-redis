@@ -767,6 +767,10 @@ module MakeClient(Mode: Mode) = struct
     let command = [ "AUTH"; password ] in
     send_request connection command >>= return_ok_status
 
+  let auth_acl connection username password =
+    let command = [ "AUTH"; username; password ] in
+    send_request connection command >>= return_ok_status
+
   let echo connection message =
     let command = [ "ECHO"; message ] in
     send_request connection command >>= return_bulk

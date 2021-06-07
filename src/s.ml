@@ -120,6 +120,9 @@ module type Client = sig
   (** Authenticate to server. *)
   val auth : connection -> string -> unit IO.t
 
+  (** Authenticate to server with username and password. *)
+  val auth_acl : connection -> string -> string -> unit IO.t
+
   (** Echo given string. *)
   val echo : connection -> string -> string option IO.t
 

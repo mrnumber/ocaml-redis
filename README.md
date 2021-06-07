@@ -28,3 +28,9 @@ http://0xffea.github.io/ocaml-redis/
   ```
 
 **Note**: connections are not safe to share among threads.
+
+## Contribution
+
+The tests require [Docker](https://docs.docker.com/get-docker/) and [docker-compose](https://docs.docker.com/compose/install/).
+
+Once they have been installed, the tests can be run with `make test`.

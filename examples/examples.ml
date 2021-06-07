@@ -2,7 +2,7 @@ open Subscribe_sync
 open Subscribe_lwt
 
 let host = ref "127.0.0.1"
-let port = ref 6379
+let port = ref 63791
 let n = ref 100_000
 
 let names = [
