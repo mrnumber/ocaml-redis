@@ -7,17 +7,20 @@ jobs:
     strategy:
       matrix:
         operating-system: [macos-latest, ubuntu-latest, windows-latest]
-        ocaml-version: [ '4.05.0' ]
+        ocaml-version: ["4.05.0"]
     steps:
-    - uses: actions/checkout@master
-    - uses: avsm/setup-ocaml@master
-      with:
-        ocaml-version: ${{ matrix.ocaml-version }}
-    - run: sudo apt-get install redis
-      if: ${{ matrix.operating-system  == 'ubuntu-latest'}}
-    - run: opam pin -n .
-    - run: opam depext -yt redis redis-sync
-    - run: opam install -t . --deps-only
-    - run: opam exec -- dune build
-    - run: opam exec -- dune runtest
-      if: ${{ matrix.operating-system  == 'ubuntu-latest'}}
+      - uses: actions/checkout@master
+      - uses: avsm/setup-ocaml@master
+        with:
+          ocaml-version: ${{ matrix.ocaml-version }}
+      - run: opam pin -n .
+      - run: opam install -t . --deps-only
+      - run: opam exec -- dune build
+      - name: Start containers
+        run: docker compose up -d
+        if: ${{ matrix.operating-system  == 'ubuntu-latest'}}
+      - run: opam exec -- dune runtest
+        if: ${{ matrix.operating-system  == 'ubuntu-latest'}}
+      - name: Stop containers
+        run: docker compose down
+        if: ${{ matrix.operating-system  == 'ubuntu-latest'}}

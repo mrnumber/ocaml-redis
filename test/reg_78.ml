@@ -22,9 +22,7 @@ let redis_test_host () =
   try Sys.getenv "OCAML_REDIS_TEST_IP"
   with Not_found -> "127.0.0.1"
 
-let redis_test_port () =
-  try int_of_string(Sys.getenv "OCAML_REDIS_TEST_PORT")
-  with Not_found -> 6379
+let redis_test_port () = 63791
 
 let redis_spec : Client.connection_spec =
   Client.({host=redis_test_host ();
