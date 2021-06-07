@@ -1,4 +1,4 @@
-open OUnit
+open OUnit2
 open Result
 
 let redis_test_host () =
@@ -30,22 +30,11 @@ let redis_n_strings_bucket n =
     if n = 0 then acc else helper (redis_string_bucket () :: acc) (n - 1) in
   helper [] n
 
-let rec test_exit_code = function
-  | [] ->
-    0
-  | RSuccess _ :: t
-  | RSkip _ :: t ->
-    test_exit_code t
-  | RFailure _ :: _
-  | RError   _ :: _
-  | RTodo    _ :: _ ->
-    1
-
 module Make(Client : Redis.S.Client) : sig
-  val suite : string -> OUnit.test
+  val suite : string -> OUnit2.test
   val teardown : unit -> unit
   val redis_spec : Client.connection_spec
-  val bracket : ?spec:Client.connection_spec -> (Client.connection -> 'a Client.IO.t) -> unit -> 'a
+  val bracket : ?spec:Client.connection_spec -> (Client.connection -> 'a Client.IO.t) -> 'ctx -> 'a
 end = struct
 
   module IO = Client.IO
@@ -529,7 +518,7 @@ end = struct
       Client.del conn keys >>= fun _ ->
       IO.return ()
 
-  let bracket ?spec test_case () =
+  let bracket ?spec test_case _ =
     let spec = match spec with | None -> redis_spec | Some s -> s in
     try
       IO.run @@ Client.with_connection spec test_case

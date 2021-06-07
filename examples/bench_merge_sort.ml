@@ -21,6 +21,10 @@ let ignore_int (_:int) = ()
 let str_of_list (self:t) (id:string) : string =
   Printf.sprintf "[%s]" (String.concat ","@@ C.lrange self.c id 0 self.n)
 
+let unwrap_opt_ msg = function
+  | Some x -> x
+  | None -> failwith msg
+
 let run (self:t) : unit =
   let c = self.c in
   let id_list = mk_id self "list" in
@@ -43,8 +47,8 @@ let run (self:t) : unit =
       ) else if len2=0 then (
         C.rpush c into (C.lrange c id1 0 len1) |> ignore_int;
       ) else (
-        let x = C.lpop c id1 |> CCOpt.get_exn |> int_of_string in
-        let y = C.lpop c id2 |> CCOpt.get_exn |> int_of_string in
+        let x = C.lpop c id1 |> unwrap_opt_ "lpop id1" |> int_of_string in
+        let y = C.lpop c id2 |> unwrap_opt_ "lpop id2" |> int_of_string in
         (* Printf.printf "  x=%d, y=%d\n%!" x y; *)
         if x<y then (
           C.lpush c id2 [string_of_int y] |> ignore_int;

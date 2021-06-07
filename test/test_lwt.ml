@@ -1,7 +1,7 @@
 module Test_lwt = Test.Make(Redis_lwt.Client)
 module Test_lwt_cluster = Test.Make(Redis_lwt.ClusterClient)
 
-open OUnit
+open OUnit2
 open Lwt.Infix
 
 (* Compute fibonacci function using Redis as a memoization cache *)
@@ -75,7 +75,8 @@ let suite =
 
 let () =
   Random.self_init ();
-  let res = run_test_tt suite in
+  let code = ref 0 in
+  OUnit2.run_test_tt_main ~exit:(fun i->code := i) suite;
   Test_lwt.teardown ();
   Test_lwt_fib.teardown();
-  exit @@ Test.test_exit_code res
+  exit @@ !code

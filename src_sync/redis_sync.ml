@@ -2,8 +2,8 @@ module IO = struct
   type 'a t = 'a
 
   type fd = Unix.file_descr
-  type in_channel = Pervasives.in_channel
-  type out_channel = Pervasives.out_channel
+  type nonrec in_channel = in_channel
+  type nonrec out_channel = out_channel
 
   type 'a stream = 'a Stream.t
   type stream_count = int
@@ -40,10 +40,10 @@ module IO = struct
 
   let in_channel_of_descr = Unix.in_channel_of_descr
   let out_channel_of_descr = Unix.out_channel_of_descr
-  let input_char = Pervasives.input_char
-  let really_input = Pervasives.really_input
+  let input_char = input_char
+  let really_input = really_input
   let output_string = output_string
-  let flush = Pervasives.flush
+  let flush = flush
 
   let iter = List.iter
   let iter_serial = List.iter

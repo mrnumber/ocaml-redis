@@ -3,24 +3,30 @@ on: [push, pull_request]
 jobs:
   run:
     name: Build
-    runs-on: ${{ matrix.operating-system }}
     strategy:
       matrix:
-        operating-system: [macos-latest, ubuntu-latest, windows-latest]
-        ocaml-version: ["4.05.0"]
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+        ocaml-compiler:
+          - 4.03.x
+          - 4.10.x
+          - 4.12.x
+    runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@master
-      - uses: avsm/setup-ocaml@master
-        with:
-          ocaml-version: ${{ matrix.ocaml-version }}
-      - run: opam pin -n .
-      - run: opam install -t . --deps-only
-      - run: opam exec -- dune build
-      - name: Start containers
-        run: docker compose up -d
-        if: ${{ matrix.operating-system  == 'ubuntu-latest'}}
-      - run: opam exec -- dune runtest
-        if: ${{ matrix.operating-system  == 'ubuntu-latest'}}
-      - name: Stop containers
-        run: docker compose down
-        if: ${{ matrix.operating-system  == 'ubuntu-latest'}}
+    - uses: actions/checkout@v2
+    - uses: ocaml/setup-ocaml@v2
+      with:
+        ocaml-compiler: ${{ matrix.ocaml-compiler }}
+    - run: opam pin -n .
+    - run: opam install -t . --deps-only
+    - run: opam exec -- dune build
+    - name: Start containers
+      run: docker compose up -d
+      if: ${{ matrix.os == 'ubuntu-latest'}}
+    - run: opam exec -- dune runtest
+      if: ${{ matrix.os == 'ubuntu-latest'}}
+    - name: Stop containers
+      run: docker compose down
+      if: ${{ matrix.os == 'ubuntu-latest'}}
