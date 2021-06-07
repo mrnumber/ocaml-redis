@@ -1,5 +1,4 @@
 open OUnit2
-open Result
 
 let redis_test_host () =
   try
@@ -31,9 +30,10 @@ let redis_n_strings_bucket n =
   helper [] n
 
 module Make(Client : Redis.S.Client) : sig
+  type containers
   val suite : string -> OUnit2.test
   val teardown : unit -> unit
-  val redis_spec : Client.connection_spec
+  val redis_specs : containers
   val bracket : ?spec:Client.connection_spec -> (Client.connection -> 'a Client.IO.t) -> 'ctx -> 'a
 end = struct
 
@@ -42,25 +42,26 @@ end = struct
   let (>>=) = IO.(>>=)
   let (>>|) x f = x >>= fun x -> IO.return (f x)
 
-  let redis_spec : Client.connection_spec =
-    Client.({host=redis_test_host ();
-             port=redis_test_port })
+  type containers = {
+    no_auth : Client.connection_spec;
+    with_auth : Client.connection_spec;
+    with_acl : Client.connection_spec;
+  }
 
-  let redis_spec_with_auth : Client.connection_spec =
-    Client.({host=redis_test_host ();
-             port=redis_test_port_with_auth })
-
-  let redis_spec_with_acl : Client.connection_spec =
-    Client.({host=redis_test_host ();
-             port=redis_test_port_with_acl })
+  let redis_specs : containers =
+    {
+      no_auth = Client.({host=redis_test_host (); port=redis_test_port });
+      with_auth = Client.({host=redis_test_host (); port=redis_test_port_with_auth }); 
+      with_acl = Client.({host=redis_test_host (); port=redis_test_port_with_acl });
+    }
 
   let io_assert msg check result =
     IO.return (assert_bool msg (check result))
 
   let assert_throws fn err msg =
-    IO.catch (fun () -> fn () >>= (fun x -> IO.return (Ok x))) (fun e -> IO.return @@ Error e)
+    IO.catch (fun () -> fn () >>= (fun x -> IO.return (`Ok x))) (fun e -> IO.return @@ `Error e)
     >>= io_assert msg @@ function
-    | Error (Client.Redis_error e) -> e = err
+    | `Error (Client.Redis_error e) -> e = err
     | _ -> false
 
   let test_case_auth conn =
@@ -519,7 +520,7 @@ end = struct
       IO.return ()
 
   let bracket ?spec test_case _ =
-    let spec = match spec with | None -> redis_spec | Some s -> s in
+    let spec = match spec with | None -> redis_specs.no_auth | Some s -> s in
     try
       IO.run @@ Client.with_connection spec test_case
     with (Client.Unexpected reply as exn) ->
@@ -542,16 +543,16 @@ end = struct
   let teardown () =
     flush stderr;
     IO.run @@ (
-      Client.with_connection redis_spec cleanup_keys >>= fun _ ->
-      Client.with_connection redis_spec_with_auth @@ fun conn -> Client.auth conn "some-password" >>= fun _ -> cleanup_keys conn >>= fun _ ->
-      Client.with_connection redis_spec_with_acl @@ fun conn -> Client.auth_acl conn "superuser" "superpass" >>= fun _ -> cleanup_keys conn
+      Client.with_connection redis_specs.no_auth cleanup_keys >>= fun _ ->
+      Client.with_connection redis_specs.with_auth @@ fun conn -> Client.auth conn "some-password" >>= fun _ -> cleanup_keys conn >>= fun _ ->
+      Client.with_connection redis_specs.with_acl @@ fun conn -> Client.auth_acl conn "superuser" "superpass" >>= fun _ -> cleanup_keys conn
     )
 
   let suite name =
     let suite_name = "redis." ^ name in
     suite_name >::: [
-        "test_case_auth" >:: (bracket ~spec:redis_spec_with_auth test_case_auth);
-        "test_case_acl" >:: (bracket ~spec:redis_spec_with_acl test_case_acl);
+        "test_case_auth" >:: (bracket ~spec:redis_specs.with_auth test_case_auth);
+        "test_case_acl" >:: (bracket ~spec:redis_specs.with_acl test_case_acl);
         "test_case_ping" >:: (bracket test_case_ping);
         "test_case_echo" >:: (bracket test_case_echo);
         "test_case_info" >:: (bracket test_case_info);
