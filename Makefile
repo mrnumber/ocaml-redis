@@ -5,8 +5,8 @@ build:
 	@dune build @all
 
 test:
-	@docker compose up -d
-	@(dune runtest --force --no-buffer; EXIT_CODE="$$?"; docker compose down; exit $$EXIT_CODE)
+	@docker-compose up -d
+	@(dune runtest --force --no-buffer; EXIT_CODE="$$?"; docker-compose down; exit $$EXIT_CODE)
 
 clean:
 	@dune clean
