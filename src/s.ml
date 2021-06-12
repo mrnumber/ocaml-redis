@@ -545,12 +545,15 @@ module type Client = sig
   (** Add a stream event, as a list of key-value pairs, to the given stream.
       @return the ID of the new event
       @param maxlen can be used to trim the stream.
+      @param id specify a custom ID. Most of the of time you don't want to
+        set this.
       @see https://redis.io/commands/xadd .
       @since 0.5 *)
   val xadd :
     connection ->
     string ->
     ?maxlen:[`Exact of int | `Approximate of int] ->
+    ?id:string ->
     (string * string) list ->
     string IO.t
 
@@ -563,6 +566,54 @@ module type Client = sig
     string ->
     string list ->
     int IO.t
+
+  (** Length of a stream.
+      @see https://redis.io/commands/xlen .
+      @since 0.5 *)
+  val xlen : connection -> string -> int IO.t
+
+  (** [xrange connection stream ~start ~end_ ()] returns a range of
+      events in the stream.
+
+      @param start beginning of the range. It can be one of:
+
+        - [`Min] ("-" in the doc) to indicate the earliest possible time
+        - [`At "timestamp"] or [`At "timestamp-number"] for a left-inclusive
+          bound
+        - [`Just_after "timestamp"] or [`Just_after "timestamp-number"]
+          for a left-exclusive bound ("(" in the doc)
+          only since Redis 6.2
+
+      @param end_ same as start but for the right bound
+      @param count maximum number of events returned
+
+      @return a lits of events (at most [count] if specified). Each event is
+        a pair [(id, pairs)] where [id] is the unique ID of the event,
+        of the form "<timestamp>-<counter>", and [pairs] is a list of
+        key-value pairs associated with the event.
+
+      @see https://redis.io/commands/xrange
+      @since 0.5 *)
+  val xrange :
+    connection ->
+    string ->
+    start:[`Min | `At of string | `Just_after of string] ->
+    end_:[`Max | `At of string | `Just_before of string] ->
+    ?count:int ->
+    unit ->
+    (string * (string * string) list) list IO.t
+
+  (** Like {!xrange} but in reverse order.
+      @see https://redis.io/commands/xrevrange
+      @since 0.5 *)
+  val xrevrange :
+    connection ->
+    string ->
+    start:[`Max | `At of string | `Just_before of string] ->
+    end_:[`Min | `At of string | `Just_after of string] ->
+    ?count:int ->
+    unit ->
+    (string * (string * string) list) list IO.t
 
   (** {2 Transaction commands} *)
 

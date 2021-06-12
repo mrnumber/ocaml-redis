@@ -336,6 +336,23 @@ module Common(IO: S.IO) = struct
         ) (deinterleave list))
     with e -> IO.fail e
 
+  let return_string_key_value_multibulk reply =
+    return_multibulk reply >>= fun list ->
+    try
+      List.map
+        (function
+          | `Multibulk [`Bulk (Some s); `Multibulk pairs] ->
+            let pairs = Utils.List.filter_map (function
+                | `Bulk (Some k), `Bulk (Some v) -> Some (k, v)
+                | _ -> None
+              ) (deinterleave pairs)
+            in
+            s, pairs
+          | _ -> raise (Unexpected reply))
+        list
+      |> IO.return
+    with e -> IO.fail e
+
   let return_opt_pair_multibulk reply =
     return_bulk_multibulk reply >>= function
     | []               -> IO.return None
@@ -549,6 +566,7 @@ module type Mode = sig
   val return_no_nil_multibulk : reply -> string list IO.t
   val return_key_value_multibulk : reply -> (string * string) list IO.t
   val return_opt_pair_multibulk : reply -> (string * string) option IO.t
+  val return_string_key_value_multibulk : reply -> (string * (string*string) list) list IO.t
   val return_info_bulk : reply -> (string * string) list IO.t
   val connect : connection_spec -> connection IO.t
   val disconnect : connection -> unit IO.t
@@ -1616,6 +1634,63 @@ module MakeClient(Mode: Mode) = struct
   let xdel connection stream ids : int IO.t =
     let command = ("XDEL" :: stream :: ids) in
     send_request connection command >>= return_int
+
+  let xadd connection stream ?maxlen ?id pairs : _ IO.t =
+    let command = List.fold_left (fun acc (k,v) -> k :: v :: acc) [] pairs in
+    let command = match id with
+      | None -> command
+      | Some id -> id :: command
+    in
+    let command = match maxlen with
+      | None -> command
+      | Some (`Exact i) -> "maxcount" :: string_of_int i :: command
+      | Some (`Approximate i) -> "maxcount" :: "~" :: string_of_int i :: command
+    in
+    let command = "XADD" :: stream :: command in
+    send_request connection command >>= function
+    | `Bulk (Some s) -> IO.return s
+    | `Bulk None -> IO.fail (Redis_error "xadd failed")
+    | reply -> IO.fail (Unexpected reply)
+
+  let xlen connection stream =
+    let command = ["XLEN"; stream] in
+    send_request connection command >>= return_int
+
+  let xrange connection stream ~start ~end_ ?count () : _ list IO.t =
+    let command = match count with
+      | None -> []
+      | Some c -> ["COUNT"; string_of_int c]
+    in
+    let command = match end_ with
+      | `Max -> "+" :: command
+      | `At s -> s :: command
+      | `Just_before s -> ("("^s) :: command
+    in
+    let command = match start with
+      | `Min -> "-" :: command
+      | `At s -> s :: command
+      | `Just_after s -> ("("^s) :: command
+    in
+    let command = "XRANGE" :: stream :: command in
+    send_request connection command >>= return_string_key_value_multibulk
+
+  let xrevrange connection stream ~start ~end_ ?count () : _ list IO.t =
+    let command = match count with
+      | None -> []
+      | Some c -> ["COUNT"; string_of_int c]
+    in
+    let command = match end_ with
+      | `Min -> "-" :: command
+      | `At s -> s :: command
+      | `Just_after s -> ("("^s) :: command
+    in
+    let command = match start with
+      | `Max -> "+" :: command
+      | `At s -> s :: command
+      | `Just_before s -> ("("^s) :: command
+    in
+    let command = "XREVRANGE" :: stream :: command in
+    send_request connection command >>= return_string_key_value_multibulk
 
   (** Transaction commands *)
 
