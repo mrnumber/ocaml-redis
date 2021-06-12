@@ -415,152 +415,152 @@ module type Client = sig
 
   (** {2 Set commands} *)
 
-  (* Returns true if member was added, false otherwise. *)
+  (** Returns true if member was added, false otherwise. *)
   val sadd : connection -> string -> string -> bool IO.t
 
   val scard : connection -> string -> int IO.t
 
-  (* Difference between first and all successive sets. *)
+  (** Difference between first and all successive sets. *)
   val sdiff : connection -> string list -> string list IO.t
 
-  (* like sdiff, but store result in destination. returns size of result. *)
+  (** like sdiff, but store result in destination. returns size of result. *)
   val sdiffstore : connection -> string -> string list -> int IO.t
 
   val sinter : connection -> string list -> string list IO.t
 
-  (* Like SINTER, but store result in destination. Returns size of result. *)
+  (** Like SINTER, but store result in destination. Returns size of result. *)
   val sinterstore : connection -> string -> string list -> int IO.t
 
   val sismember : connection -> string -> string -> bool IO.t
 
   val smembers : connection -> string -> string list IO.t
 
-  (* Returns true if an element was moved, false otherwise. *)
+  (** Returns true if an element was moved, false otherwise. *)
   val smove : connection -> string -> string -> string -> bool IO.t
 
-  (* Remove random element from set. *)
+  (** Remove random element from set. *)
   val spop : connection -> string -> string option IO.t
 
-  (* Like SPOP, but doesn't remove chosen element. *)
+  (** Like SPOP, but doesn't remove chosen element. *)
   val srandmember : connection -> string -> string option IO.t
 
-  (* Returns true if element was removed. *)
+  (** Returns true if element was removed. *)
   val srem : connection -> string -> string -> bool IO.t
 
   val sunion : connection -> string list -> string list IO.t
 
-  (* Like SUNION, but store result in destination. Returns size of result. *)
+  (** Like SUNION, but store result in destination. Returns size of result. *)
   val sunionstore : connection -> string -> string list -> int IO.t
 
   (** {2 Pub/sub commands} *)
 
-  (* Post a message to a channel. Returns number of clients that received the message. *)
+  (** Post a message to a channel. Returns number of clients that received the message. *)
   val publish : connection -> string -> string -> int IO.t
 
-  (* Lists the currently active channels. If no pattern is specified, all channels are listed. *)
+  (** Lists the currently active channels. If no pattern is specified, all channels are listed. *)
   val pubsub_channels : connection -> string option -> reply list IO.t
 
-  (* Returns the number of subscribers (not counting clients subscribed to patterns) for the specified channels. *)
+  (** Returns the number of subscribers (not counting clients subscribed to patterns) for the specified channels. *)
   val pubsub_numsub : connection -> string list -> reply list IO.t
 
-  (* Subscribes the client to the specified channels. *)
+  (** Subscribes the client to the specified channels. *)
   val subscribe : connection -> string list -> unit IO.t
 
-  (* Unsubscribes the client from the given channels, or from all of them if an empty list is given *)
+  (** Unsubscribes the client from the given channels, or from all of them if an empty list is given *)
   val unsubscribe : connection -> string list -> unit IO.t
 
-  (* Subscribes the client to the given patterns. *)
+  (** Subscribes the client to the given patterns. *)
   val psubscribe : connection -> string list -> unit IO.t
 
-  (* Unsubscribes the client from the given patterns. *)
+  (** Unsubscribes the client from the given patterns. *)
   val punsubscribe : connection -> string list -> unit IO.t
 
   (** {2 Sorted set commands} *)
 
-  (* Add one or more members to a sorted set, or update its score if it already exists. *)
+  (** Add one or more members to a sorted set, or update its score if it already exists. *)
   val zadd : connection ->
     ?x:[< `NX | `XX ] -> ?ch:bool ->
     string -> (float * string) list -> int IO.t
 
-  (* Return a range of members in a sorted set, by index. *)
+  (** Return a range of members in a sorted set, by index. *)
   val zrange : connection -> ?withscores:bool -> string -> int -> int -> reply list IO.t
 
-  (* Return a reversed range of members in a sorted set, by index. *)
+  (** Return a reversed range of members in a sorted set, by index. *)
   val zrevrange : connection -> ?withscores:bool -> string -> int -> int -> reply list IO.t
 
-  (* Return a range of members in a sorted set, by score. *)
+  (** Return a range of members in a sorted set, by score. *)
   val zrangebyscore : connection -> ?withscores:bool -> ?limit:(int * int) -> string -> FloatBound.t -> FloatBound.t -> reply list IO.t
 
-  (* Return a range of members in a sorted set, by lexicographical range. *)
+  (** Return a range of members in a sorted set, by lexicographical range. *)
   val zrangebylex : connection -> ?limit:(int * int) -> string -> StringBound.t -> StringBound.t -> reply list IO.t
 
-  (* Return a range of members in a sorted set, by score. *)
+  (** Return a range of members in a sorted set, by score. *)
   val zrevrangebyscore : connection -> ?withscores:bool -> ?limit:(int * int) -> string -> FloatBound.t -> FloatBound.t -> reply list IO.t
 
-  (* Return a range of members in a sorted set, by lexicographical range. *)
+  (** Return a range of members in a sorted set, by lexicographical range. *)
   val zrevrangebylex : connection -> ?limit:(int * int) -> string -> StringBound.t -> StringBound.t -> reply list IO.t
 
-  (* Remove one or more members from a sorted set. *)
+  (** Remove one or more members from a sorted set. *)
   val zrem : connection -> string -> string list -> int IO.t
 
-  (* Remove all members in a sorted set between the given lexicographical range. *)
+  (** Remove all members in a sorted set between the given lexicographical range. *)
   val zremrangebylex : connection -> string -> StringBound.t -> StringBound.t -> int IO.t
 
-  (* Remove all members in a sorted set between the given score range. *)
+  (** Remove all members in a sorted set between the given score range. *)
   val zremrangebyscore : connection -> string -> FloatBound.t -> FloatBound.t -> int IO.t
 
-  (* Remove all members in a sorted set between the given rank range. *)
+  (** Remove all members in a sorted set between the given rank range. *)
   val zremrangebyrank : connection -> string -> int -> int -> int IO.t
 
-  (* Returns the sorted set cardinality (number of elements) of the sorted set stored at key. *)
+  (** Returns the sorted set cardinality (number of elements) of the sorted set stored at key. *)
   val zcard : connection -> string  -> int IO.t
 
-  (* Increment the score of a member in the sorted set *)
+  (** Increment the score of a member in the sorted set *)
   val zincrby : connection -> string -> float -> string -> float IO.t
 
-  (* Returns the score of a member in the sorted set. *)
+  (** Returns the score of a member in the sorted set. *)
   val zscore : connection -> string -> string -> float option IO.t
 
-  (* Returns the number of elements in the sorted set at key with a score between min and max. *)
+  (** Returns the number of elements in the sorted set at key with a score between min and max. *)
   val zcount : connection -> string -> FloatBound.t -> FloatBound.t -> int IO.t
 
-  (* Returns the number of members in a sorted set between a given lexicographical range. *)
+  (** Returns the number of members in a sorted set between a given lexicographical range. *)
   val zlexcount : connection -> string -> StringBound.t -> StringBound.t -> int IO.t
 
-  (* Returns the rank of member in the sorted set stored at key. *)
+  (** Returns the rank of member in the sorted set stored at key. *)
   val zrank : connection -> string -> string -> int option IO.t
 
-  (* Returns the reversed rank of member in the sorted set stored at key. *)
+  (** Returns the reversed rank of member in the sorted set stored at key. *)
   val zrevrank : connection -> string -> string -> int option IO.t
 
   (** {2 Transaction commands} *)
 
-  (* Marks the start of a transaction block. Subsequent commands will be queued for atomic execution using EXEC. *)
+  (** Marks the start of a transaction block. Subsequent commands will be queued for atomic execution using EXEC. *)
   val multi : connection -> unit IO.t
 
-  (* Executes all previously queued commands in a transaction and restores the connection state to normal. *)
+  (** Executes all previously queued commands in a transaction and restores the connection state to normal. *)
   val exec : connection -> reply list IO.t
 
-  (* Flushes all previously queued commands in a transaction and restores the connection state to normal. *)
+  (** Flushes all previously queued commands in a transaction and restores the connection state to normal. *)
   val discard : connection -> unit IO.t
 
-  (* Marks the given keys to be watched for conditional execution of a transaction. *)
+  (** Marks the given keys to be watched for conditional execution of a transaction. *)
   val watch : connection -> string list -> unit IO.t
 
-  (* Flushes all the previously watched keys for a transaction. *)
+  (** Flushes all the previously watched keys for a transaction. *)
   val unwatch : connection -> unit IO.t
 
   val queue : (unit -> 'a IO.t) -> unit IO.t
 
   (** {2 Scripting commands} *)
 
-  (* Load the specified Lua script into the script cache. Returns the SHA1 digest of the script for use with EVALSHA. *)
+  (** Load the specified Lua script into the script cache. Returns the SHA1 digest of the script for use with EVALSHA. *)
   val script_load : connection -> string -> string IO.t
 
-  (* Evaluates a script using the built-in Lua interpreter. *)
+  (** Evaluates a script using the built-in Lua interpreter. *)
   val eval : connection -> string -> string list -> string list -> reply IO.t
 
-  (* Evaluates a script cached on the server side by its SHA1 digest. *)
+  (** Evaluates a script cached on the server side by its SHA1 digest. *)
   val evalsha : connection -> string -> string list -> string list -> reply IO.t
 
   (** {2 Server} *)
@@ -573,26 +573,27 @@ module type Client = sig
 
   val dbsize : connection -> int IO.t
 
-  (* clear all databases *)
+  (** clear all databases *)
   val flushall : connection -> unit IO.t
 
-  (* clear current database *)
+  (** clear current database *)
   val flushdb : connection -> unit IO.t
 
   val info : connection -> (string * string) list IO.t
 
-  (* last successful save as Unix timestamp *)
+  (** last successful save as Unix timestamp *)
   val lastsave : connection -> float IO.t
 
-  (* role in context of replication *)
+  (** role in context of replication *)
   val role : connection -> reply list IO.t
 
-  (* synchronous save *)
+  (** synchronous save *)
   val save : connection -> unit IO.t
 
-  (* save and shutdown server *)
+  (** save and shutdown server *)
   val shutdown : connection -> unit IO.t
 
+  (** Batch commands for mass insertion *)
   module MassInsert : sig
     type command
 
