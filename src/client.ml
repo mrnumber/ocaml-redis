@@ -1620,10 +1620,10 @@ module MakeClient(Mode: Mode) = struct
 
   let xadd connection stream ?maxlen ?id pairs : _ IO.t =
     let command =
-      List.fold_left (fun acc (k,v) -> k :: v :: acc) [] pairs |> List.rev
+      List.fold_left (fun acc (k,v) -> v :: k :: acc) [] pairs |> List.rev
     in
     let command = match id with
-      | None -> command
+      | None -> "*" :: command
       | Some id -> id :: command
     in
     let command = match maxlen with
