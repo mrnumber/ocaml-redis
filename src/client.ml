@@ -40,6 +40,8 @@ module Common(IO: S.IO) = struct
     port : int;
   }
 
+  let connection_spec ?(port=6379) host = {host; port}
+
   module SlotMap = Map.Make(struct
       type t = int
       let compare = Pervasives.compare
@@ -483,6 +485,8 @@ module type Mode = sig
     host : string;
     port : int;
   }
+
+  val connection_spec : ?port:int -> string -> connection_spec
 
   module SlotMap : Map.S with type key = int
   module ConnectionSpecMap : Map.S with type key = connection_spec
