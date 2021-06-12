@@ -1712,7 +1712,7 @@ module MakeClient(Mode: Mode) = struct
         (fun acc (_, cnt) ->
            match cnt with
            | `Last -> "$" :: acc
-           | `At i -> i :: acc)
+           | `After i -> i :: acc)
         command pairs
     in
     let command = "STREAMS" :: List.rev command in

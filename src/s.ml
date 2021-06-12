@@ -547,7 +547,8 @@ module type Client = sig
       @param maxlen can be used to trim the stream.
       @param id specify a custom ID. Most of the of time you don't want to
         set this.
-      @see https://redis.io/commands/xadd .
+
+      @see {{: https://redis.io/commands/xadd } the official doc}
       @since 0.5 *)
   val xadd :
     connection ->
@@ -559,7 +560,8 @@ module type Client = sig
 
   (** Delete specific stream events. Should be rarely useful.
       @return the number of deleted events.
-      @see https://redis.io/commands/xdel .
+
+      @see {{: https://redis.io/commands/xdel } the official doc}
       @since 0.5 *)
   val xdel :
     connection ->
@@ -576,7 +578,8 @@ module type Client = sig
       @param maxlen the maximum number of entries to preserve, prioritizing
         the most recent ones. [`Approximate n] is faster, and should be preferred.
       @return number of deleted entries
-      @see https://redis.io/commands/xtrim .
+
+      @see {{: https://redis.io/commands/xtrim } the official doc}
       @since 0.5 *)
   val xtrim :
     connection -> string ->
@@ -609,7 +612,7 @@ module type Client = sig
         of the form "<timestamp>-<counter>", and [pairs] is a list of
         key-value pairs associated with the event.
 
-      @see https://redis.io/commands/xrange
+      @see {{: https://redis.io/commands/xrange} the official doc}
       @since 0.5 *)
   val xrange :
     connection ->
@@ -621,7 +624,7 @@ module type Client = sig
     stream_event list IO.t
 
   (** Like {!xrange} but in reverse order.
-      @see https://redis.io/commands/xrevrange
+      @see {{: https://redis.io/commands/xrevrange } the official doc}
       @since 0.5 *)
   val xrevrange :
     connection ->
@@ -639,8 +642,9 @@ module type Client = sig
       [<after>] is either:
 
         - [`Last] ("$" in the doc) to get events coming after
-          the last current event (so, new events)
-        - or [`At i] to get events coming after the given ID [i].
+          the last current event (so, new events);
+        - or [`After i] to get events coming after the given ID [i],
+          excluding [i] itself.
 
       @return a list of [("stream-name", <events>)].
       Each pair contains the name of a stream (that was among the
@@ -650,13 +654,14 @@ module type Client = sig
       @param count max number of events returned {b per stream}
       @param block_ms if provided, [xread] blocks at most [block_ms] milliseconds
         for new events. Otherwise [xread] is synchronous and returns immediately.
-      @see https://redis.io/commands/xrevrange
+
+      @see {{: https://redis.io/commands/xread} the official doc}
       @since 0.5 *)
   val xread :
     connection ->
     ?count:int ->
     ?block_ms:int ->
-    (string * [`Last | `At of string]) list ->
+    (string * [`Last | `After of string]) list ->
     (string * stream_event list) list IO.t
 
   (** {2 Transaction commands} *)
