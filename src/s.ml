@@ -572,6 +572,23 @@ module type Client = sig
       @since 0.5 *)
   val xlen : connection -> string -> int IO.t
 
+  (** Trim stream to the given maximum length.
+      @param maxlen the maximum number of entries to preserve, prioritizing
+        the most recent ones. [`Approximate n] is faster, and should be preferred.
+      @return number of deleted entries
+      @see https://redis.io/commands/xtrim .
+      @since 0.5 *)
+  val xtrim :
+    connection -> string ->
+    maxlen:[`Exact of int | `Approximate of int] ->
+    unit -> int IO.t
+
+  (** A stream event as returned by Redis.
+      It is composed of a stream ID (timestamp + counter),
+      and a list of key/value pairs.
+      @since 0.5 *)
+  type stream_event = string * (string * string) list
+
   (** [xrange connection stream ~start ~end_ ()] returns a range of
       events in the stream.
 
@@ -601,7 +618,7 @@ module type Client = sig
     end_:[`Max | `At of string | `Just_before of string] ->
     ?count:int ->
     unit ->
-    (string * (string * string) list) list IO.t
+    stream_event list IO.t
 
   (** Like {!xrange} but in reverse order.
       @see https://redis.io/commands/xrevrange
@@ -613,7 +630,34 @@ module type Client = sig
     end_:[`Min | `At of string | `Just_after of string] ->
     ?count:int ->
     unit ->
-    (string * (string * string) list) list IO.t
+    stream_event list IO.t
+
+  (** [xread connection pairs] reads data from the multiple streams
+      specified in [pairs].
+
+      Each item of [pairs] is a pair [("stream-name", <after>)] where
+      [<after>] is either:
+
+        - [`Last] ("$" in the doc) to get events coming after
+          the last current event (so, new events)
+        - or [`At i] to get events coming after the given ID [i].
+
+      @return a list of [("stream-name", <events>)].
+      Each pair contains the name of a stream (that was among the
+      input [pairs]), along with events of that stream coming after the
+      corresponding position.
+
+      @param count max number of events returned {b per stream}
+      @param block_ms if provided, [xread] blocks at most [block_ms] milliseconds
+        for new events. Otherwise [xread] is synchronous and returns immediately.
+      @see https://redis.io/commands/xrevrange
+      @since 0.5 *)
+  val xread :
+    connection ->
+    ?count:int ->
+    ?block_ms:int ->
+    (string * [`Last | `At of string]) list ->
+    (string * stream_event list) list IO.t
 
   (** {2 Transaction commands} *)
 

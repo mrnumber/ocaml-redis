@@ -1,3 +1,13 @@
+
+(* this assumes the list length is even *)
+let deinterleave list =
+  let rec loop acc = function
+    | x :: y :: tail -> loop ((x, y) :: acc) tail
+    | [] -> List.rev acc
+    | _ -> raise (Invalid_argument "List length must be even")
+  in
+  loop [] list
+
 module Common(IO: S.IO) = struct
   module IO = IO
 
@@ -243,15 +253,6 @@ module Common(IO: S.IO) = struct
     in
     loop [] list
 
-  (* this assumes the list length is even *)
-  let deinterleave list =
-    let rec loop acc = function
-      | x :: y :: tail -> loop ((x, y) :: acc) tail
-      | [] -> List.rev acc
-      | _ -> raise (Invalid_argument "List length must be even")
-    in
-    loop [] list
-
   let return_bulk = function
     | `Bulk b -> IO.return b
     | x       -> IO.fail (Unexpected x)
@@ -334,23 +335,6 @@ module Common(IO: S.IO) = struct
           | (Some k, Some v) -> Some (k, v)
           | _ -> None
         ) (deinterleave list))
-    with e -> IO.fail e
-
-  let return_string_key_value_multibulk reply =
-    return_multibulk reply >>= fun list ->
-    try
-      List.map
-        (function
-          | `Multibulk [`Bulk (Some s); `Multibulk pairs] ->
-            let pairs = Utils.List.filter_map (function
-                | `Bulk (Some k), `Bulk (Some v) -> Some (k, v)
-                | _ -> None
-              ) (deinterleave pairs)
-            in
-            s, pairs
-          | _ -> raise (Unexpected reply))
-        list
-      |> IO.return
     with e -> IO.fail e
 
   let return_opt_pair_multibulk reply =
@@ -566,7 +550,6 @@ module type Mode = sig
   val return_no_nil_multibulk : reply -> string list IO.t
   val return_key_value_multibulk : reply -> (string * string) list IO.t
   val return_opt_pair_multibulk : reply -> (string * string) option IO.t
-  val return_string_key_value_multibulk : reply -> (string * (string*string) list) list IO.t
   val return_info_bulk : reply -> (string * string) list IO.t
   val connect : connection_spec -> connection IO.t
   val disconnect : connection -> unit IO.t
@@ -1636,7 +1619,9 @@ module MakeClient(Mode: Mode) = struct
     send_request connection command >>= return_int
 
   let xadd connection stream ?maxlen ?id pairs : _ IO.t =
-    let command = List.fold_left (fun acc (k,v) -> k :: v :: acc) [] pairs in
+    let command =
+      List.fold_left (fun acc (k,v) -> k :: v :: acc) [] pairs |> List.rev
+    in
     let command = match id with
       | None -> command
       | Some id -> id :: command
@@ -1656,7 +1641,36 @@ module MakeClient(Mode: Mode) = struct
     let command = ["XLEN"; stream] in
     send_request connection command >>= return_int
 
-  let xrange connection stream ~start ~end_ ?count () : _ list IO.t =
+  let xtrim connection stream ~maxlen () =
+    let command = match maxlen with
+      | `Exact i -> "maxcount" :: string_of_int i :: []
+      | `Approximate i -> "maxcount" :: "~" :: string_of_int i :: []
+    in
+    let command = "XTRIM" :: stream :: command in
+    send_request connection command >>= return_int
+
+  type stream_event = string * (string * string) list
+
+  let decode_evs_ reply =
+    match reply with
+    | `Multibulk l ->
+      l |> List.map
+        (function
+          | `Multibulk [`Bulk (Some s); `Multibulk pairs] ->
+            let pairs = Utils.List.filter_map (function
+                | `Bulk (Some k), `Bulk (Some v) -> Some (k, v)
+                | _ -> None
+              ) (deinterleave pairs)
+            in
+            s, pairs
+          | _ -> raise (Unexpected reply))
+    | _ -> raise (Unexpected reply)
+
+  let decode_evs_io_ reply =
+    try IO.return (decode_evs_ reply)
+    with e -> IO.fail e
+
+  let xrange connection stream ~start ~end_ ?count () : stream_event list IO.t =
     let command = match count with
       | None -> []
       | Some c -> ["COUNT"; string_of_int c]
@@ -1672,7 +1686,7 @@ module MakeClient(Mode: Mode) = struct
       | `Just_after s -> ("("^s) :: command
     in
     let command = "XRANGE" :: stream :: command in
-    send_request connection command >>= return_string_key_value_multibulk
+    send_request connection command >>= decode_evs_io_
 
   let xrevrange connection stream ~start ~end_ ?count () : _ list IO.t =
     let command = match count with
@@ -1690,7 +1704,44 @@ module MakeClient(Mode: Mode) = struct
       | `Just_before s -> ("("^s) :: command
     in
     let command = "XREVRANGE" :: stream :: command in
-    send_request connection command >>= return_string_key_value_multibulk
+    send_request connection command >>= decode_evs_io_
+
+  let xread connection ?count ?block_ms pairs : _ list IO.t =
+    let command = List.fold_left (fun acc (str, _) -> str :: acc) [] pairs in
+    let command = List.fold_left
+        (fun acc (_, cnt) ->
+           match cnt with
+           | `Last -> "$" :: acc
+           | `At i -> i :: acc)
+        command pairs
+    in
+    let command = "STREAMS" :: List.rev command in
+    let command = match block_ms with
+      | None -> command
+      | Some s -> "BLOCK" :: string_of_int s :: command
+    in
+    let command = match count with
+      | None -> command
+      | Some n -> "COUNT" :: string_of_int n :: command
+    in
+    let command = "XREAD" :: command in
+
+    let decode_ reply =
+      try
+        match reply with
+        | `Bulk None -> IO.return []
+        | `Multibulk l ->
+          l |> List.map (function
+              | `Multibulk [`Bulk (Some str); evs] ->
+                let evs = decode_evs_ evs in
+                str, evs
+              | _ -> raise (Unexpected reply))
+          |> IO.return
+        | _ -> raise (Unexpected reply)
+      with e -> IO.fail e
+    in
+
+    send_request connection command >>= decode_
 
   (** Transaction commands *)
 
