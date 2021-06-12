@@ -1607,6 +1607,12 @@ module MakeClient(Mode: Mode) = struct
     let command = ["ZREVRANK"; key; member] in
     send_request connection command >>= return_int_option
 
+  (** Stream commands *)
+
+  let xdel connection stream ids : int IO.t =
+    let command = ("XDEL" :: stream :: ids) in
+    send_request connection command >>= return_int
+
   (** Transaction commands *)
 
   (* Marks the start of a transaction block. Subsequent commands will be queued for atomic execution using EXEC. *)

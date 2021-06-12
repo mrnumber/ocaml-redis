@@ -533,6 +533,32 @@ module type Client = sig
   (** Returns the reversed rank of member in the sorted set stored at key. *)
   val zrevrank : connection -> string -> string -> int option IO.t
 
+  (** {2 Stream commands}
+
+      For redis >= 5. We only support a subset of the commands for now. *)
+
+  (** Add a stream event, as a list of key-value pairs, to the given stream.
+      @return the ID of the new event
+      @param maxlen can be used to trim the stream.
+      @see https://redis.io/commands/xadd .
+      @since 0.5 *)
+  val xadd :
+    connection ->
+    string ->
+    ?maxlen:[`Exact of int | `Approximate of int] ->
+    (string * string) list ->
+    string IO.t
+
+  (** Delete specific stream events. Should be rarely useful.
+      @return the number of deleted events.
+      @see https://redis.io/commands/xdel .
+      @since 0.5 *)
+  val xdel :
+    connection ->
+    string ->
+    string list ->
+    int IO.t
+
   (** {2 Transaction commands} *)
 
   (** Marks the start of a transaction block. Subsequent commands will be queued for atomic execution using EXEC. *)
