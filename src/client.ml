@@ -97,8 +97,8 @@ module Common(IO: S.IO) = struct
     let to_string = function
       | NegInfinity -> "-"
       | PosInfinity -> "+"
-      | Exclusive bound -> String.concat "" ["("; bound]
-      | Inclusive bound -> String.concat "" ["["; bound]
+      | Exclusive bound -> "(" ^ bound
+      | Inclusive bound -> "[" ^ bound
   end
 
   module FloatBound = struct
@@ -1675,16 +1675,7 @@ module MakeClient(Mode: Mode) = struct
       | None -> []
       | Some c -> ["COUNT"; string_of_int c]
     in
-    let command = match end_ with
-      | `Max -> "+" :: command
-      | `At s -> s :: command
-      | `Just_before s -> ("("^s) :: command
-    in
-    let command = match start with
-      | `Min -> "-" :: command
-      | `At s -> s :: command
-      | `Just_after s -> ("("^s) :: command
-    in
+    let command = StringBound.to_string start :: StringBound.to_string end_ :: command in
     let command = "XRANGE" :: stream :: command in
     send_request connection command >>= decode_evs_io_
 
@@ -1693,16 +1684,7 @@ module MakeClient(Mode: Mode) = struct
       | None -> []
       | Some c -> ["COUNT"; string_of_int c]
     in
-    let command = match end_ with
-      | `Min -> "-" :: command
-      | `At s -> s :: command
-      | `Just_after s -> ("("^s) :: command
-    in
-    let command = match start with
-      | `Max -> "+" :: command
-      | `At s -> s :: command
-      | `Just_before s -> ("("^s) :: command
-    in
+    let command = StringBound.to_string start :: StringBound.to_string end_ :: command in
     let command = "XREVRANGE" :: stream :: command in
     send_request connection command >>= decode_evs_io_
 

@@ -597,10 +597,10 @@ module type Client = sig
 
       @param start beginning of the range. It can be one of:
 
-        - [`Min] ("-" in the doc) to indicate the earliest possible time
-        - [`At "timestamp"] or [`At "timestamp-number"] for a left-inclusive
-          bound
-        - [`Just_after "timestamp"] or [`Just_after "timestamp-number"]
+        - [StringBound.NegInfinity] ("-" in the doc) to indicate the earliest possible time
+        - [StringBound.Inclusive "timestamp"] or [StringBound.Inclusive "timestamp-number"]
+          for a left-inclusive bound
+        - [StringBound.Exclusive "timestamp"] or [StringBound.Exclusive "timestamp-number"]
           for a left-exclusive bound ("(" in the doc)
           only since Redis 6.2
 
@@ -617,8 +617,8 @@ module type Client = sig
   val xrange :
     connection ->
     string ->
-    start:[`Min | `At of string | `Just_after of string] ->
-    end_:[`Max | `At of string | `Just_before of string] ->
+    start:StringBound.t ->
+    end_:StringBound.t ->
     ?count:int ->
     unit ->
     stream_event list IO.t
@@ -629,8 +629,8 @@ module type Client = sig
   val xrevrange :
     connection ->
     string ->
-    start:[`Max | `At of string | `Just_before of string] ->
-    end_:[`Min | `At of string | `Just_after of string] ->
+    start:StringBound.t ->
+    end_:StringBound.t ->
     ?count:int ->
     unit ->
     stream_event list IO.t
