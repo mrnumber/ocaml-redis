@@ -250,12 +250,12 @@ end = struct
     let value = redis_string_bucket () in
     Client.set conn key value >>=
     io_assert "Can't set key" ((=) true) >>= fun () ->
-    let expiry = Unix.time () +. 1. in
+    let expiry = Unix.gettimeofday () +. 5. in
     Client.expireat conn key expiry >>=
     io_assert "Can't set expiration timeout for key" ((=) true) >>= fun () ->
     Client.ttl conn key >>=
     io_assert "Can't check expiration timeout for key"
-      (fun x -> List.mem x [Some 0; Some 1]) >>= fun () ->
+      (function None -> false | Some x -> x >= 4 && x <= 6) >>= fun () ->
 
     let pexpiry = int_of_float (Unix.time ()) * 1000 + 1000 in
     Client.pexpireat conn key pexpiry >>=
