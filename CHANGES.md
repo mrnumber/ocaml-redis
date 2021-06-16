@@ -2,6 +2,17 @@
 
 ## WIP
 
+## 0.5
+
+- add xadd, xlen, xdel, xrange, xrevrange, xtrim, xread
+- add `connection_spec` constructor with default port
+- require ocaml 4.03 at least
+- Add support for authenticating with ACL (thanks Steven Anderson)
+
+maintenance: 
+- move to ounit2 for tests
+- add github actions for CI and doc generation, remove travis
+
 ## 0.4
 
 - feat: also have `>|=` in IO; in Cache, atomic set+expire
