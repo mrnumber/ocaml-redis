@@ -1,5 +1,13 @@
-module Test_lwt = Test.Make(Redis_lwt.Client)
-module Test_lwt_cluster = Test.Make(Redis_lwt.ClusterClient)
+module Utils = struct
+  module IO = Redis_lwt.Client.IO
+  let spawn f ~on_complete =
+    Lwt.async (fun () ->
+        let open Lwt.Infix in
+        let fut = f() in
+        fut >|= fun x -> on_complete x)
+end
+module Test_lwt = Test.Make(Redis_lwt.Client)(Utils)
+module Test_lwt_cluster = Test.Make(Redis_lwt.ClusterClient)(Utils)
 
 open OUnit2
 open Lwt.Infix

@@ -9,7 +9,7 @@
  (name test_sync)
  (modules test_sync)
  (flags :standard -safe-string)
- (libraries redis_test redis_sync))
+ (libraries redis_test redis_sync threads))
 
 (executable
  (name test_lwt)

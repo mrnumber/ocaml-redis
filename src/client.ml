@@ -1,3 +1,13 @@
+
+(* this assumes the list length is even *)
+let deinterleave list =
+  let rec loop acc = function
+    | x :: y :: tail -> loop ((x, y) :: acc) tail
+    | [] -> List.rev acc
+    | _ -> raise (Invalid_argument "List length must be even")
+  in
+  loop [] list
+
 module Common(IO: S.IO) = struct
   module IO = IO
 
@@ -39,6 +49,8 @@ module Common(IO: S.IO) = struct
     host : string;
     port : int;
   }
+
+  let connection_spec ?(port=6379) host = {host; port}
 
   module SlotMap = Map.Make(struct
       type t = int
@@ -82,11 +94,13 @@ module Common(IO: S.IO) = struct
   module StringBound = struct
     type t = NegInfinity | PosInfinity | Exclusive of string | Inclusive of string
 
-    let to_string = function
+    let to_cmd ~with_bracket = function
       | NegInfinity -> "-"
       | PosInfinity -> "+"
-      | Exclusive bound -> String.concat "" ["("; bound]
-      | Inclusive bound -> String.concat "" ["["; bound]
+      | Exclusive bound -> "(" ^ bound
+      | Inclusive bound -> if with_bracket then "[" ^ bound else bound
+
+    let to_string = to_cmd ~with_bracket:true
   end
 
   module FloatBound = struct
@@ -238,15 +252,6 @@ module Common(IO: S.IO) = struct
     let rec loop acc = function
       | (x, y) :: tail -> loop (y :: x :: acc ) tail
       | [] -> List.rev acc
-    in
-    loop [] list
-
-  (* this assumes the list length is even *)
-  let deinterleave list =
-    let rec loop acc = function
-      | x :: y :: tail -> loop ((x, y) :: acc) tail
-      | [] -> List.rev acc
-      | _ -> raise (Invalid_argument "List length must be even")
     in
     loop [] list
 
@@ -484,6 +489,8 @@ module type Mode = sig
     port : int;
   }
 
+  val connection_spec : ?port:int -> string -> connection_spec
+
   module SlotMap : Map.S with type key = int
   module ConnectionSpecMap : Map.S with type key = connection_spec
 
@@ -513,6 +520,7 @@ module type Mode = sig
       | Inclusive of string
 
     val to_string : t -> string
+    val to_cmd : with_bracket:bool -> t -> string
   end
 
   module FloatBound : sig
@@ -1516,8 +1524,8 @@ module MakeClient(Mode: Mode) = struct
 
   (* Return a range of members in a sorted set, by lexicographical range. *)
   let zrangebylex connection ?limit key min_bound max_bound =
-    let min = StringBound.to_string min_bound in
-    let max = StringBound.to_string max_bound in
+    let min = StringBound.to_cmd ~with_bracket:true min_bound in
+    let max = StringBound.to_cmd ~with_bracket:true max_bound in
     let limit = match limit with
       | None -> []
       | Some (offset, count) ->
@@ -1542,8 +1550,8 @@ module MakeClient(Mode: Mode) = struct
 
   (* Return a range of members in a sorted set, by lexicographical range. *)
   let zrevrangebylex connection ?limit key min_bound max_bound =
-    let min = StringBound.to_string min_bound in
-    let max = StringBound.to_string max_bound in
+    let min = StringBound.to_cmd ~with_bracket:true min_bound in
+    let max = StringBound.to_cmd ~with_bracket:true max_bound in
     let limit = match limit with
       | None -> []
       | Some (offset, count) ->
@@ -1559,8 +1567,8 @@ module MakeClient(Mode: Mode) = struct
 
   (* Remove all members in a sorted set between the given lexicographical range. *)
   let zremrangebylex connection key min_bound max_bound =
-    let min = StringBound.to_string min_bound in
-    let max = StringBound.to_string max_bound in
+    let min = StringBound.to_cmd ~with_bracket:true min_bound in
+    let max = StringBound.to_cmd ~with_bracket:true max_bound in
     let command = ["ZREMRANGEBYLEX"; key; min; max] in
     send_request connection command >>= return_int
 
@@ -1593,8 +1601,8 @@ module MakeClient(Mode: Mode) = struct
   (* Returns the number of members in a sorted set between a given lexicographical range. *)
   let zlexcount connection key lower_bound upper_bound =
     let command = ["ZLEXCOUNT"; key;
-                   StringBound.to_string lower_bound;
-                   StringBound.to_string upper_bound;] in
+                   StringBound.to_cmd ~with_bracket:true lower_bound;
+                   StringBound.to_cmd ~with_bracket:true upper_bound;] in
     send_request connection command >>= return_int
 
   (* Returns the rank of member in the sorted set stored at key. *)
@@ -1606,6 +1614,123 @@ module MakeClient(Mode: Mode) = struct
   let zrevrank connection key member =
     let command = ["ZREVRANK"; key; member] in
     send_request connection command >>= return_int_option
+
+  (** Stream commands *)
+
+  let xdel connection stream ids : int IO.t =
+    let command = ("XDEL" :: stream :: ids) in
+    send_request connection command >>= return_int
+
+  let xadd connection stream ?maxlen ?id pairs : _ IO.t =
+    let command =
+      List.fold_left (fun acc (k,v) -> v :: k :: acc) [] pairs |> List.rev
+    in
+    let command = match id with
+      | None -> "*" :: command
+      | Some id -> id :: command
+    in
+    let command = match maxlen with
+      | None -> command
+      | Some (`Exact i) -> "maxcount" :: string_of_int i :: command
+      | Some (`Approximate i) -> "maxcount" :: "~" :: string_of_int i :: command
+    in
+    let command = "XADD" :: stream :: command in
+    send_request connection command >>= function
+    | `Bulk (Some s) -> IO.return s
+    | `Bulk None -> IO.fail (Redis_error "xadd failed")
+    | reply -> IO.fail (Unexpected reply)
+
+  let xlen connection stream =
+    let command = ["XLEN"; stream] in
+    send_request connection command >>= return_int
+
+  let xtrim connection stream ~maxlen () =
+    let command = match maxlen with
+      | `Exact i -> "maxcount" :: string_of_int i :: []
+      | `Approximate i -> "maxcount" :: "~" :: string_of_int i :: []
+    in
+    let command = "XTRIM" :: stream :: command in
+    send_request connection command >>= return_int
+
+  type stream_event = string * (string * string) list
+
+  let decode_evs_ reply =
+    match reply with
+    | `Multibulk l ->
+      l |> List.map
+        (function
+          | `Multibulk [`Bulk (Some s); `Multibulk pairs] ->
+            let pairs = Utils.List.filter_map (function
+                | `Bulk (Some k), `Bulk (Some v) -> Some (k, v)
+                | _ -> None
+              ) (deinterleave pairs)
+            in
+            s, pairs
+          | _ -> raise (Unexpected reply))
+    | _ -> raise (Unexpected reply)
+
+  let decode_evs_io_ reply =
+    try IO.return (decode_evs_ reply)
+    with e -> IO.fail e
+
+  let xrange connection stream ~start ~end_ ?count () : stream_event list IO.t =
+    let command = match count with
+      | None -> []
+      | Some c -> ["COUNT"; string_of_int c]
+    in
+    let command =
+      StringBound.to_cmd ~with_bracket:false start ::
+      StringBound.to_cmd ~with_bracket:false end_ :: command in
+    let command = "XRANGE" :: stream :: command in
+    send_request connection command >>= decode_evs_io_
+
+  let xrevrange connection stream ~start ~end_ ?count () : _ list IO.t =
+    let command = match count with
+      | None -> []
+      | Some c -> ["COUNT"; string_of_int c]
+    in
+    let command =
+      StringBound.to_cmd ~with_bracket:false start ::
+      StringBound.to_cmd ~with_bracket:false end_ :: command in
+    let command = "XREVRANGE" :: stream :: command in
+    send_request connection command >>= decode_evs_io_
+
+  let xread connection ?count ?block_ms pairs : _ list IO.t =
+    let command = List.fold_left (fun acc (str, _) -> str :: acc) [] pairs in
+    let command = List.fold_left
+        (fun acc (_, cnt) ->
+           match cnt with
+           | `Last -> "$" :: acc
+           | `After i -> i :: acc)
+        command pairs
+    in
+    let command = "STREAMS" :: List.rev command in
+    let command = match block_ms with
+      | None -> command
+      | Some s -> "BLOCK" :: string_of_int s :: command
+    in
+    let command = match count with
+      | None -> command
+      | Some n -> "COUNT" :: string_of_int n :: command
+    in
+    let command = "XREAD" :: command in
+
+    let decode_ reply =
+      try
+        match reply with
+        | `Bulk None -> IO.return []
+        | `Multibulk l ->
+          l |> List.map (function
+              | `Multibulk [`Bulk (Some str); evs] ->
+                let evs = decode_evs_ evs in
+                str, evs
+              | _ -> raise (Unexpected reply))
+          |> IO.return
+        | _ -> raise (Unexpected reply)
+      with e -> IO.fail e
+    in
+
+    send_request connection command >>= decode_
 
   (** Transaction commands *)
 

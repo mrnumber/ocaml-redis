@@ -83,6 +83,11 @@ module type Client = sig
     port : int;
   }
 
+  val connection_spec : ?port:int -> string -> connection_spec
+  (** Create a connection spec with the given host.
+      @param port port to connect to (default [6379])
+      @since 0.5 *)
+
   module SlotMap : Map.S with type key = int
   module ConnectionSpecMap : Map.S with type key = connection_spec
 
@@ -532,6 +537,132 @@ module type Client = sig
 
   (** Returns the reversed rank of member in the sorted set stored at key. *)
   val zrevrank : connection -> string -> string -> int option IO.t
+
+  (** {2 Stream commands}
+
+      For redis >= 5. We only support a subset of the commands for now. *)
+
+  (** Add a stream event, as a list of key-value pairs, to the given stream.
+      @return the ID of the new event
+      @param maxlen can be used to trim the stream.
+      @param id specify a custom ID. Most of the of time you don't want to
+        set this.
+
+      @see {{: https://redis.io/commands/xadd } the official doc}
+      @since 0.5 *)
+  val xadd :
+    connection ->
+    string ->
+    ?maxlen:[`Exact of int | `Approximate of int] ->
+    ?id:string ->
+    (string * string) list ->
+    string IO.t
+
+  (** Delete specific stream events. Should be rarely useful.
+      @return the number of deleted events.
+
+      @see {{: https://redis.io/commands/xdel } the official doc}
+      @since 0.5 *)
+  val xdel :
+    connection ->
+    string ->
+    string list ->
+    int IO.t
+
+  (** Length of a stream.
+      @see https://redis.io/commands/xlen .
+      @since 0.5 *)
+  val xlen : connection -> string -> int IO.t
+
+  (** Trim stream to the given maximum length.
+      @param maxlen the maximum number of entries to preserve, prioritizing
+        the most recent ones. [`Approximate n] is faster, and should be preferred.
+      @return number of deleted entries
+
+      @see {{: https://redis.io/commands/xtrim } the official doc}
+      @since 0.5 *)
+  val xtrim :
+    connection -> string ->
+    maxlen:[`Exact of int | `Approximate of int] ->
+    unit -> int IO.t
+
+  (** A stream event as returned by Redis.
+      It is composed of a stream ID (timestamp + counter),
+      and a list of key/value pairs.
+      @since 0.5 *)
+  type stream_event = string * (string * string) list
+
+  (** [xrange connection stream ~start ~end_ ()] returns a range of
+      events in the stream.
+
+      @param start beginning of the range. It can be one of:
+
+        - [StringBound.NegInfinity] ("-" in the doc) to indicate the earliest possible time
+        - [StringBound.Inclusive "timestamp"] or [StringBound.Inclusive "timestamp-number"]
+          for a left-inclusive bound
+        - [StringBound.Exclusive "timestamp"] or [StringBound.Exclusive "timestamp-number"]
+          for a left-exclusive bound ("(" in the doc)
+          only since Redis 6.2
+
+      @param end_ same as start but for the right bound
+      @param count maximum number of events returned
+
+      @return a lits of events (at most [count] if specified). Each event is
+        a pair [(id, pairs)] where [id] is the unique ID of the event,
+        of the form "<timestamp>-<counter>", and [pairs] is a list of
+        key-value pairs associated with the event.
+
+      @see {{: https://redis.io/commands/xrange} the official doc}
+      @since 0.5 *)
+  val xrange :
+    connection ->
+    string ->
+    start:StringBound.t ->
+    end_:StringBound.t ->
+    ?count:int ->
+    unit ->
+    stream_event list IO.t
+
+  (** Like {!xrange} but in reverse order.
+      @see {{: https://redis.io/commands/xrevrange } the official doc}
+      @since 0.5 *)
+  val xrevrange :
+    connection ->
+    string ->
+    start:StringBound.t ->
+    end_:StringBound.t ->
+    ?count:int ->
+    unit ->
+    stream_event list IO.t
+
+  (** [xread connection pairs] reads data from the multiple streams
+      specified in [pairs].
+
+      Each item of [pairs] is a pair [("stream-name", <after>)] where
+      [<after>] is either:
+
+        - [`Last] ("$" in the doc) to get events coming after
+          the last current event (so, new events);
+        - or [`After i] to get events coming after the given ID [i],
+          excluding [i] itself.
+
+      @return a list of [("stream-name", <events>)].
+      Each pair contains the name of a stream (that was among the
+      input [pairs]), along with events of that stream coming after the
+      corresponding position.
+
+      @param count max number of events returned {b per stream}
+      @param block_ms if provided, [xread] blocks at most [block_ms] milliseconds
+        for new events. Otherwise [xread] is synchronous and returns immediately.
+
+      @see {{: https://redis.io/commands/xread} the official doc}
+      @since 0.5 *)
+  val xread :
+    connection ->
+    ?count:int ->
+    ?block_ms:int ->
+    (string * [`Last | `After of string]) list ->
+    (string * stream_event list) list IO.t
 
   (** {2 Transaction commands} *)
 

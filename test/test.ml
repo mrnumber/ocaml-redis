@@ -29,7 +29,12 @@ let redis_n_strings_bucket n =
     if n = 0 then acc else helper (redis_string_bucket () :: acc) (n - 1) in
   helper [] n
 
-module Make(Client : Redis.S.Client) : sig
+module type UTILS = sig
+  module IO : Redis.S.IO
+  val spawn : (unit -> 'a IO.t) -> on_complete:('a -> unit) -> unit
+end
+
+module Make(Client : Redis.S.Client)(U : UTILS with module IO = Client.IO) : sig
   type containers
   val suite : string -> OUnit2.test
   val teardown : unit -> unit
@@ -512,6 +517,84 @@ end = struct
     Client.zremrangebylex conn key NegInfinity PosInfinity >>=
     io_assert "removed wrong number of items" ((=) 2)
 
+  let test_case_stream conn =
+    let key = redis_string_bucket() in
+    Client.xadd conn key ["x", "1"; "y", "2"] >>= fun id1 ->
+    Client.xadd conn key ["x", "10"; "y", "20"] >>= fun id2 ->
+    io_assert "id1<id2" (fun () -> String.compare id1 id2 < 0) () >>= fun () ->
+
+    Client.xlen conn key >>= fun len ->
+    io_assert "len=2" ((=) 2) len >>= fun () ->
+
+    Client.xadd conn key ["x", "100"; "y", "200"] >>= fun id3 ->
+    io_assert "id2<id3" (fun () -> String.compare id2 id3 < 0) () >>= fun () ->
+
+    Client.xlen conn key >>= fun len ->
+    io_assert "len=3" ((=) 3) len >>= fun () ->
+
+    Client.xrange conn key
+      ~start:Client.StringBound.NegInfinity
+      ~end_:(Client.StringBound.Inclusive id2) () >>= fun items ->
+    io_assert "xrange:2 items" (fun l->List.length l=2) items >>= fun () ->
+    io_assert "keys=[id1,id2]" (fun () -> List.map fst items = [id1;id2]) () >>= fun () ->
+
+    (*
+    Client.xtrim conn key ~maxlen:(`Exact 1) () >>= fun n_trimed ->
+    io_assert "trimmed 2" ((=) 2) n_trimed >>= fun () ->
+
+    Client.xdel conn key [id3] >>= fun n_del ->
+    io_assert "ndel=1" ((=) 1) n_del >>= fun () ->
+
+    Client.xlen conn key >>= fun len ->
+    io_assert "len=0" ((=) 0) len >>= fun () ->
+       *)
+
+    IO.return ()
+
+  let test_case_stream_xread ~spec conn : unit IO.t =
+    let key = redis_string_bucket() in
+    let has_read = ref 0 in
+    let is_done = ref false in
+    (* another thread to read from stream *)
+    U.spawn
+      (fun () ->
+         (* open another connection so the first one doesn't block *)
+         Client.with_connection spec @@ fun conn ->
+         Client.xread conn ~block_ms:1000 ~count:1 [key, `Last] >>= function
+         | [key', [_ts, ["v", v]]] ->
+           (* read one event *)
+           incr has_read;
+           io_assert "isk" ((=) key) key' >>= fun() ->
+           io_assert "is1" ((=) "1") v >>= fun () ->
+           begin
+             Client.xread conn ~block_ms:1000 ~count:1 [key, `Last] >>= function
+             | [key', [_ts, ["v", v]]] ->
+               io_assert "isk" ((=) key) key' >>= fun() ->
+               io_assert "is2" ((=) "2") v >>= fun () ->
+               IO.return ()
+             | _ -> io_assert "bad shape" (fun _ -> false) ()
+           end
+         | _ -> io_assert "bad shape" (fun _ -> false) ())
+      ~on_complete:(fun () -> is_done := true);
+
+    io_assert "read=0" ((=) 0) !has_read >>= fun () ->
+    io_assert "not is-done" (fun x->not x) !is_done >>= fun () ->
+
+    IO.sleep 0.2 >>= fun () ->
+
+    Client.xadd conn key ["v", "1"] >>= fun _id ->
+    IO.sleep 0.2 >>= fun () ->
+
+    io_assert "read=1" ((=) 1) !has_read >>= fun () ->
+    io_assert "not is-done" (fun x->not x) !is_done >>= fun () ->
+
+    Client.xadd conn key ["v", "2"] >>= fun _id ->
+    IO.sleep 0.2 >>= fun () ->
+
+    io_assert "read=2" ((=) 1) !has_read >>= fun () ->
+    io_assert "is-done" (fun x->x) !is_done >>= fun () ->
+    IO.return ()
+
   let cleanup_keys conn =
     Client.keys conn "ounit_*" >>= function
     | [] -> IO.return ()
@@ -572,5 +655,7 @@ end = struct
         "test_case_hyper_log_log" >:: (bracket test_case_hyper_log_log);
         "test_case_sorted_set" >:: (bracket test_case_sorted_set);
         "test_case_sorted_set_remove" >:: (bracket test_case_sorted_set_remove);
+        "test_stream" >:: bracket test_case_stream;
+        "test_stream_xread" >:: bracket (test_case_stream_xread ~spec:redis_specs.no_auth);
       ]
 end
