@@ -94,11 +94,13 @@ module Common(IO: S.IO) = struct
   module StringBound = struct
     type t = NegInfinity | PosInfinity | Exclusive of string | Inclusive of string
 
-    let to_string = function
+    let to_cmd ~with_bracket = function
       | NegInfinity -> "-"
       | PosInfinity -> "+"
       | Exclusive bound -> "(" ^ bound
-      | Inclusive bound -> "[" ^ bound
+      | Inclusive bound -> if with_bracket then "[" ^ bound else bound
+
+    let to_string = to_cmd ~with_bracket:true
   end
 
   module FloatBound = struct
@@ -518,6 +520,7 @@ module type Mode = sig
       | Inclusive of string
 
     val to_string : t -> string
+    val to_cmd : with_bracket:bool -> t -> string
   end
 
   module FloatBound : sig
@@ -1521,8 +1524,8 @@ module MakeClient(Mode: Mode) = struct
 
   (* Return a range of members in a sorted set, by lexicographical range. *)
   let zrangebylex connection ?limit key min_bound max_bound =
-    let min = StringBound.to_string min_bound in
-    let max = StringBound.to_string max_bound in
+    let min = StringBound.to_cmd ~with_bracket:true min_bound in
+    let max = StringBound.to_cmd ~with_bracket:true max_bound in
     let limit = match limit with
       | None -> []
       | Some (offset, count) ->
@@ -1547,8 +1550,8 @@ module MakeClient(Mode: Mode) = struct
 
   (* Return a range of members in a sorted set, by lexicographical range. *)
   let zrevrangebylex connection ?limit key min_bound max_bound =
-    let min = StringBound.to_string min_bound in
-    let max = StringBound.to_string max_bound in
+    let min = StringBound.to_cmd ~with_bracket:true min_bound in
+    let max = StringBound.to_cmd ~with_bracket:true max_bound in
     let limit = match limit with
       | None -> []
       | Some (offset, count) ->
@@ -1564,8 +1567,8 @@ module MakeClient(Mode: Mode) = struct
 
   (* Remove all members in a sorted set between the given lexicographical range. *)
   let zremrangebylex connection key min_bound max_bound =
-    let min = StringBound.to_string min_bound in
-    let max = StringBound.to_string max_bound in
+    let min = StringBound.to_cmd ~with_bracket:true min_bound in
+    let max = StringBound.to_cmd ~with_bracket:true max_bound in
     let command = ["ZREMRANGEBYLEX"; key; min; max] in
     send_request connection command >>= return_int
 
@@ -1598,8 +1601,8 @@ module MakeClient(Mode: Mode) = struct
   (* Returns the number of members in a sorted set between a given lexicographical range. *)
   let zlexcount connection key lower_bound upper_bound =
     let command = ["ZLEXCOUNT"; key;
-                   StringBound.to_string lower_bound;
-                   StringBound.to_string upper_bound;] in
+                   StringBound.to_cmd ~with_bracket:true lower_bound;
+                   StringBound.to_cmd ~with_bracket:true upper_bound;] in
     send_request connection command >>= return_int
 
   (* Returns the rank of member in the sorted set stored at key. *)
@@ -1675,7 +1678,9 @@ module MakeClient(Mode: Mode) = struct
       | None -> []
       | Some c -> ["COUNT"; string_of_int c]
     in
-    let command = StringBound.to_string start :: StringBound.to_string end_ :: command in
+    let command =
+      StringBound.to_cmd ~with_bracket:false start ::
+      StringBound.to_cmd ~with_bracket:false end_ :: command in
     let command = "XRANGE" :: stream :: command in
     send_request connection command >>= decode_evs_io_
 
@@ -1684,7 +1689,9 @@ module MakeClient(Mode: Mode) = struct
       | None -> []
       | Some c -> ["COUNT"; string_of_int c]
     in
-    let command = StringBound.to_string start :: StringBound.to_string end_ :: command in
+    let command =
+      StringBound.to_cmd ~with_bracket:false start ::
+      StringBound.to_cmd ~with_bracket:false end_ :: command in
     let command = "XREVRANGE" :: stream :: command in
     send_request connection command >>= decode_evs_io_
 
