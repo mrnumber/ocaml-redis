@@ -8,7 +8,7 @@ authors: [
 ]
 homepage: "https://github.com/0xffea/ocaml-redis"
 bug-reports: "https://github.com/0xffea/ocaml-redis/issues"
-license: "BSD3"
+license: "BSD-3-Clause"
 tags: ["redis" "lwt"]
 dev-repo: "git+https://github.com/0xffea/ocaml-redis.git"
 synopsis: "Redis client (lwt interface)"
@@ -20,7 +20,7 @@ build: [
 depends: [
   "dune" {>= "1.0"}
   "redis" { = version }
-  "lwt"
+  "lwt" {>= "2.4.7"}
   "ocaml" { >= "4.03.0" }
   "ounit2" {with-test}
   "containers" {with-test}
