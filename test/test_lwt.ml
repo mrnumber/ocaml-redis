@@ -59,9 +59,9 @@ module Test_lwt_fib = struct
     OUnit.assert_equal ~printer:string_of_int ref res;
     Lwt.return ()
 
-  let bracket test_case () =
+  let bracket test_case _ctx =
     try
-      Lwt_main.run @@ P.with_pool ~size:32 Test_lwt.redis_spec test_case
+      Lwt_main.run @@ P.with_pool ~size:32 Test_lwt.redis_spec_no_auth test_case
     with C.Unexpected reply as exn ->
       Printf.eprintf "Got unexpected reply: %s\n" (C.string_of_reply reply);
       raise exn
