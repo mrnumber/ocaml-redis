@@ -517,6 +517,27 @@ end = struct
     Client.zremrangebylex conn key NegInfinity PosInfinity >>=
     io_assert "removed wrong number of items" ((=) 2)
 
+  let test_case_sorted_set_pop conn =
+    let test_case f =
+      let key = redis_string_bucket () in
+      Client.zadd conn key [1., "a"; 2., "b"; 3., "c"; 4., "d"; 5., "e"] >>= fun _ ->
+      f key
+    in
+
+    test_case (fun key ->
+      Client.zpopmin conn key 2 >>=
+      io_assert "zpopmin: items (a, b)" ((=) ["a", 1.; "b", 2.]) >>= fun () ->
+      Client.zpopmax conn key 2 >>=
+      io_assert "zpopmax: items (e, d)" ((=) ["e", 5.; "d", 4.])) >>= fun () ->
+
+    test_case (fun key ->
+      Client.bzpopmin conn [ key ] 1. >>=
+      io_assert "bzpopmin: item (a)" ((=) (Some (key, "a", 1.))) >>= fun () ->
+      Client.bzpopmax conn [ key ] 1. >>=
+      io_assert "bzpopmax: item (e)" ((=) (Some (key, "e", 5.))) >>= fun () ->
+      Client.bzpopmax conn [ redis_string_bucket () ] 1e-2 >>=
+      io_assert "bzpopmax: nothing" ((=) None))
+
   let test_case_stream conn =
     let key = redis_string_bucket() in
     Client.xadd conn key ["x", "1"; "y", "2"] >>= fun id1 ->
@@ -655,6 +676,7 @@ end = struct
         "test_case_hyper_log_log" >:: (bracket test_case_hyper_log_log);
         "test_case_sorted_set" >:: (bracket test_case_sorted_set);
         "test_case_sorted_set_remove" >:: (bracket test_case_sorted_set_remove);
+        "test_case_sorted_set_pop" >:: (bracket test_case_sorted_set_pop);
         "test_stream" >:: bracket test_case_stream;
         "test_stream_xread" >:: bracket (test_case_stream_xread ~spec:redis_specs.no_auth);
       ]

@@ -538,6 +538,18 @@ module type Client = sig
   (** Returns the reversed rank of member in the sorted set stored at key. *)
   val zrevrank : connection -> string -> string -> int option IO.t
 
+  (** Removes and returns one or more members with the lowest scores in a sorted set. *)
+  val zpopmin : connection -> string -> int -> (string * float) list IO.t
+
+  (** Remove and return one or more members with the highest scores in a sorted set. *)
+  val zpopmax : connection -> string -> int -> (string * float) list IO.t
+
+  (** Remove and return the member with the lowest score in a sorted set, or block until one is available. *)
+  val bzpopmin : connection -> string list -> float -> (string * string * float) option IO.t
+
+  (** Remove and return the member with the highest score in a sorted set, or block until one is available. *)
+  val bzpopmax : connection -> string list -> float -> (string * string * float) option IO.t
+
   (** {2 Stream commands}
 
       For redis >= 5. We only support a subset of the commands for now. *)
