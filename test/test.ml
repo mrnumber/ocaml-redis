@@ -518,12 +518,23 @@ end = struct
     io_assert "removed wrong number of items" ((=) 2)
 
   let test_case_sorted_set_pop conn =
-    let key = redis_string_bucket () in
-    Client.zadd conn key [1., "a"; 2., "b"; 3., "c"; 4., "d"; 5., "e"] >>= fun _ ->
-    Client.zpopmin conn key 2 >>=
-    io_assert "zpopmin: items (a, b)" (fun l -> l = ["a", 1.; "b", 2.]) >>= fun _ ->
-    Client.zpopmax conn key 2 >>=
-    io_assert "zpopmax: items (e, d)" (fun l -> l = ["e", 5.; "d", 4.])
+    let test_case f =
+      let key = redis_string_bucket () in
+      Client.zadd conn key [1., "a"; 2., "b"; 3., "c"; 4., "d"; 5., "e"] >>= fun _ ->
+      f key
+    in
+
+    test_case (fun key ->
+      Client.zpopmin conn key 2 >>=
+      io_assert "zpopmin: items (a, b)" ((=) ["a", 1.; "b", 2.]) >>= fun () ->
+      Client.zpopmax conn key 2 >>=
+      io_assert "zpopmax: items (e, d)" ((=) ["e", 5.; "d", 4.])) >>= fun () ->
+
+    test_case (fun key ->
+      Client.bzpopmin conn [ key ] 1 >>=
+      io_assert "bzpopmin: item (a)" ((=) (Some (key, "a", 1.))) >>= fun () ->
+      Client.bzpopmax conn [ key ] 1 >>=
+      io_assert "bzpopmax: item (e)" ((=) (Some (key, "e", 5.))))
 
   let test_case_stream conn =
     let key = redis_string_bucket() in
