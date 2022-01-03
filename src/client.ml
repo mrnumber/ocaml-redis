@@ -1615,6 +1615,18 @@ module MakeClient(Mode: Mode) = struct
     let command = ["ZREVRANK"; key; member] in
     send_request connection command >>= return_int_option
 
+  (** Remove and return one or more members with the lowest/highest scores in a sorted set. *)
+  let (zpopmin, zpopmax) =
+    let zpop op connection key count =
+      let command = [op; key; string_of_int count] in
+      send_request connection command >>=
+      return_key_value_multibulk >>= fun list ->
+      try
+        IO.return (List.map (fun (value, score) -> (value, float_of_string score)) list)
+      with e -> IO.fail e
+    in
+    zpop "ZPOPMIN", zpop "ZPOPMAX"
+
   (** Stream commands *)
 
   let xdel connection stream ids : int IO.t =
