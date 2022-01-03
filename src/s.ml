@@ -545,10 +545,10 @@ module type Client = sig
   val zpopmax : connection -> string -> int -> (string * float) list IO.t
 
   (** Remove and return the member with the lowest score in a sorted set, or block until one is available. *)
-  val bzpopmin : connection -> string list -> int -> (string * string * float) option IO.t
+  val bzpopmin : connection -> string list -> float -> (string * string * float) option IO.t
 
   (** Remove and return the member with the highest score in a sorted set, or block until one is available. *)
-  val bzpopmax : connection -> string list -> int -> (string * string * float) option IO.t
+  val bzpopmax : connection -> string list -> float -> (string * string * float) option IO.t
 
   (** {2 Stream commands}
 

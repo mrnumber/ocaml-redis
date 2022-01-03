@@ -531,10 +531,12 @@ end = struct
       io_assert "zpopmax: items (e, d)" ((=) ["e", 5.; "d", 4.])) >>= fun () ->
 
     test_case (fun key ->
-      Client.bzpopmin conn [ key ] 1 >>=
+      Client.bzpopmin conn [ key ] 1. >>=
       io_assert "bzpopmin: item (a)" ((=) (Some (key, "a", 1.))) >>= fun () ->
-      Client.bzpopmax conn [ key ] 1 >>=
-      io_assert "bzpopmax: item (e)" ((=) (Some (key, "e", 5.))))
+      Client.bzpopmax conn [ key ] 1. >>=
+      io_assert "bzpopmax: item (e)" ((=) (Some (key, "e", 5.))) >>= fun () ->
+      Client.bzpopmax conn [ redis_string_bucket () ] 1e-2 >>=
+      io_assert "bzpopmax: nothing" ((=) None))
 
   let test_case_stream conn =
     let key = redis_string_bucket() in

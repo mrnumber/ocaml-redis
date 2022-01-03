@@ -1630,7 +1630,7 @@ module MakeClient(Mode: Mode) = struct
   (** Remove and return the member with the lowest/highest scores in a sorted set, or block until one is available. *)
   let (bzpopmin, bzpopmax) =
     let bzpop op connection keys timeout =
-      let command = List.concat [[op]; keys; [string_of_int timeout]] in
+      let command = List.concat [[op]; keys; [string_of_float timeout]] in
       send_request connection command >>= fun reply ->
       return_bulk_multibulk reply >>= function
       | [] -> IO.return None
