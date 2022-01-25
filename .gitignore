@@ -7,3 +7,5 @@
 /.gh-pages
 .merlin
 *.install
+
+/result*
