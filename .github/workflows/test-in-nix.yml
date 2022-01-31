@@ -10,9 +10,9 @@ jobs:
       fail-fast: false
       matrix:
         ocaml-version:
-          - 4_11
           - 4_12
-          - 4_13
+            #- 4_11
+            #- 4_13
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
