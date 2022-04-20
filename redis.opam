@@ -21,6 +21,7 @@ depends: [
   "dune" { >= "1.0" }
   "base-unix"
   "uuidm"
+  "stdlib-shims"
   "re" {>= "1.7.2"}
   "ocaml" { >= "4.03.0" }
   "odoc" {with-doc}
