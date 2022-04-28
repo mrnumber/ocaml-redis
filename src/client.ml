@@ -1333,6 +1333,20 @@ module MakeClient(Mode: Mode) = struct
     let command = "RPUSHX" :: key :: values in
     send_request connection command >>= return_int
 
+  let conv_side_ = function
+    | `Left -> "LEFT"
+    | `Right -> "RIGHT"
+
+  let lmove connection a b sidea sideb =
+    let request = ["LMOVE"; a; b; conv_side_ sidea; conv_side_ sideb] in
+    send_request connection request >>= return_bulk
+
+  let blmove connection a b sidea sideb ~timeout =
+    let request = [
+      "BLMOVE"; a; b; conv_side_ sidea; conv_side_ sideb;
+      string_of_int timeout] in
+    send_request connection request >>= return_bulk
+
   (** HyperLogLog commands *)
 
   let pfadd connection key values =

@@ -407,6 +407,23 @@ module type Client = sig
   (** Append a value to a list, only if the list exists *)
   val rpushx : connection -> string -> string list -> int IO.t
 
+  val lmove : connection ->
+    string -> string ->
+    [`Left | `Right] -> [`Left | `Right] ->
+      string option IO.t
+  (** [lmove from into sidefrom sideinto] moves an element from [from]
+      into [into], picking which side to pop/push based on the last arguments,
+      and returns the element.
+      @since NEXT_RELEASE
+      since redis 6.2 *)
+
+  val blmove : connection ->
+    string -> string ->
+    [`Left | `Right] -> [`Left | `Right] ->
+    timeout:int ->
+    string option IO.t
+  (** same as {!lmove} but blocks for up to [timeout] seconds. *)
+
   (** {2 HyperLogLog commands} *)
 
   (** Adds values to the HyperLogLog data structure. *)
