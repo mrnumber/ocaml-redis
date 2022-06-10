@@ -75,7 +75,8 @@ module type Client = sig
   ]
 
   val string_of_reply : reply -> string
-  (** For debugging purpose *)
+  (** For debugging purpose.
+      @since 0.4 *)
 
   (** Server connection info *)
   type connection_spec = {
