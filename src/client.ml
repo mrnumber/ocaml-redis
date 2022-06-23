@@ -802,6 +802,8 @@ module MakeClient(Mode: Mode) = struct
     let command = [ "SELECT"; index ] in
     send_request connection command >>= return_ok_status
 
+  let send_custom_request = send_request
+  
   (** SENTINEL commands *)
   let sentinel_masters connection =
     let command = [ "SENTINEL"; "masters"] in

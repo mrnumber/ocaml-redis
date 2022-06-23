@@ -127,7 +127,7 @@ module type Client = sig
   val auth : connection -> string -> unit IO.t
 
   (** Sends a custom request to the Redis server. Example: [ send_request connection ["set"; "foo"; "bar"] ] @since 0.6*)
-  val send_request : connection -> string list -> reply IO.t
+  val send_custom_request : connection -> string list -> reply IO.t
 
   (** Authenticate to server with username and password. *)
   val auth_acl : connection -> string -> string -> unit IO.t
