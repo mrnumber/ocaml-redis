@@ -54,7 +54,7 @@ module Common(IO: S.IO) = struct
 
   module SlotMap = Map.Make(struct
       type t = int
-      let compare = Pervasives.compare
+      let compare = Stdlib.compare
     end)
 
   module ConnectionSpecMap = Map.Make(struct
