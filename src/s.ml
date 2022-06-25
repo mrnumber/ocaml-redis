@@ -418,7 +418,7 @@ module type Client = sig
   (** [lmove from into sidefrom sideinto] moves an element from [from]
       into [into], picking which side to pop/push based on the last arguments,
       and returns the element.
-      @since NEXT_RELEASE
+      @since 0.6
       since redis 6.2 *)
 
   val blmove : connection ->

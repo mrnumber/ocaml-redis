@@ -2,6 +2,14 @@
 
 ## WIP
 
+## 0.6
+
+- feat: exposed `send_custom_request` in the client
+- add lmove and blmove
+- Add support for OCaml 5.0
+- Add bzpopmin, bzpopmax
+- Add zpopmin, zpopmax
+
 ## 0.5
 
 - add xadd, xlen, xdel, xrange, xrevrange, xtrim, xread
