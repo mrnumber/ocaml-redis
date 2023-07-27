@@ -117,7 +117,7 @@ module Common(IO: S.IO) = struct
     let num_args = List.length args in
     IO.output_string out_ch (Printf.sprintf "*%d" num_args) >>= fun () ->
     IO.output_string out_ch "\r\n" >>= fun () ->
-    IO.iter
+    IO.iter_serial
       (fun arg ->
          let length = String.length arg in
          IO.output_string out_ch (Printf.sprintf "$%d" length) >>= fun () ->
@@ -803,7 +803,7 @@ module MakeClient(Mode: Mode) = struct
     send_request connection command >>= return_ok_status
 
   let send_custom_request = send_request
-  
+
   (** SENTINEL commands *)
   let sentinel_masters connection =
     let command = [ "SENTINEL"; "masters"] in
