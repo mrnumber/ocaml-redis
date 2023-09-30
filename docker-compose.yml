@@ -14,3 +14,8 @@ services:
     build: ./test/docker/with_acl
     ports:
       - "63793:6379"
+  unix_socket:
+    image: "redis:6-alpine"
+    command: redis-server --unixsocket /socket/redis.sock --unixsocketperm 777
+    volumes:
+      - ./socket:/socket
