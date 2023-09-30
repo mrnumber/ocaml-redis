@@ -18,18 +18,9 @@ module IO = struct
   let run = Lwt_main.run
   let atomic = Lwt_io.atomic
 
-  let connect host port =
-    let port = string_of_int port in
-    let addr_info =
-      let open Lwt_unix in
-      getaddrinfo host port [AI_FAMILY PF_INET] >>= function
-      | ai::_ -> return ai
-      | [] ->
-        getaddrinfo host port [AI_FAMILY PF_INET6] >>= function
-        | ai::_ -> return ai
-        | [] -> Lwt.fail_with "Could not resolve redis host!"
-    in
-    addr_info >>= fun addr_info ->
+  let getaddrinfo = Lwt_unix.getaddrinfo
+
+  let connect addr_info =
     let fd = Lwt_unix.socket addr_info.Lwt_unix.ai_family Lwt_unix.SOCK_STREAM 0 in
     let do_connect () =
       Lwt_unix.connect fd addr_info.Lwt_unix.ai_addr >>= fun () ->
