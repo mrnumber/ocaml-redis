@@ -10,7 +10,7 @@ let redis_test_socket () =
   try
     Sys.getenv("OCAML_REDIS_TEST_SOCKET")
   with Not_found ->
-    "socket/redis.sock"
+    failwith "Environment variable OCAML_REDIS_TEST_SOCKET must be set"
 
 let redis_test_port = 63791
 let redis_test_port_with_auth = 63792
