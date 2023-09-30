@@ -1,3 +1,4 @@
+export OCAML_REDIS_TEST_SOCKET=$(CURDIR)/socket/redis.sock
 
 DOCKER_COMPOSE?=docker-compose
 all: build test
