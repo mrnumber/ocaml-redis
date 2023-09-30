@@ -9,7 +9,7 @@ module type IO = sig
   type stream_count
 
   val getaddrinfo : string -> string -> Unix.getaddrinfo_option list -> Unix.addr_info list t
-  val connect : Unix.addr_info -> fd t
+  val connect : Unix.socket_domain -> Unix.sockaddr -> fd t
   val close : fd -> unit t
   val sleep : float -> unit t
 

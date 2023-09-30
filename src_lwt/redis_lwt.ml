@@ -20,10 +20,10 @@ module IO = struct
 
   let getaddrinfo = Lwt_unix.getaddrinfo
 
-  let connect addr_info =
-    let fd = Lwt_unix.socket addr_info.Lwt_unix.ai_family Lwt_unix.SOCK_STREAM 0 in
+  let connect family addr =
+    let fd = Lwt_unix.socket family Lwt_unix.SOCK_STREAM 0 in
     let do_connect () =
-      Lwt_unix.connect fd addr_info.Lwt_unix.ai_addr >>= fun () ->
+      Lwt_unix.connect fd addr >>= fun () ->
       return fd
     in
     catch do_connect (fun exn -> Lwt_unix.close fd >>= fun () -> fail exn)

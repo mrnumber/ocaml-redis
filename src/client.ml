@@ -359,7 +359,8 @@ module Common(IO: S.IO) = struct
         | ai::_ -> IO.return ai
         | [] -> IO.fail (Failure "Could not resolve redis host!")
     in
-    addr_info >>= IO.connect >>= fun fd ->
+    addr_info >>= fun {ai_family; ai_addr; _} ->
+    IO.connect ai_family ai_addr >>= fun fd ->
     let in_ch = IO.in_channel_of_descr fd in
     IO.return
       { fd = fd;

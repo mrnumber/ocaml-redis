@@ -20,10 +20,10 @@ module IO = struct
 
   let getaddrinfo = Unix.getaddrinfo
 
-  let connect addr_info =
-    let fd = Unix.socket addr_info.Unix.ai_family Unix.SOCK_STREAM 0 in
+  let connect family addr =
+    let fd = Unix.socket family Unix.SOCK_STREAM 0 in
     try
-      Unix.connect fd addr_info.Unix.ai_addr; fd
+      Unix.connect fd addr; fd
     with
       exn -> Unix.close fd; raise exn
 
