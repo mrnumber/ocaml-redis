@@ -16,6 +16,7 @@ services:
       - "63793:6379"
   unix_socket:
     image: "redis:6-alpine"
-    command: redis-server --unixsocket /socket/redis.sock --unixsocketperm 777
+    command: |
+      sh -xc "chmod 777 /socket && redis-server --unixsocket /socket/redis.sock --unixsocketperm 777"
     volumes:
       - ./socket:/socket
