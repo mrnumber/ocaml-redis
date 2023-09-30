@@ -349,17 +349,22 @@ module Common(IO: S.IO) = struct
     | None   -> IO.return []
 
   let connect spec =
-    let {host=host; port=port} = spec in
-    let port = string_of_int port in
-    let addr_info =
-      IO.getaddrinfo host port [AI_FAMILY PF_INET] >>= function
-      | ai::_ -> IO.return ai
-      | [] ->
-        IO.getaddrinfo host port [AI_FAMILY PF_INET6] >>= function
-        | ai::_ -> IO.return ai
-        | [] -> IO.fail (Failure "Could not resolve redis host!")
-    in
-    addr_info >>= fun {ai_family; ai_addr; _} ->
+    (match spec with
+     | {host=socket; port=0} ->
+       IO.return (Unix.PF_UNIX, Unix.ADDR_UNIX socket)
+     | {host=host; port=port} ->
+       let port = string_of_int port in
+       let addr_info =
+         IO.getaddrinfo host port [AI_FAMILY PF_INET] >>= function
+         | ai::_ -> IO.return ai
+         | [] ->
+           IO.getaddrinfo host port [AI_FAMILY PF_INET6] >>= function
+           | ai::_ -> IO.return ai
+           | [] -> IO.fail (Failure "Could not resolve redis host!")
+       in
+       addr_info >>= fun {ai_family; ai_addr; _} ->
+       IO.return (ai_family, ai_addr))
+    >>= fun (ai_family, ai_addr) ->
     IO.connect ai_family ai_addr >>= fun fd ->
     let in_ch = IO.in_channel_of_descr fd in
     IO.return
