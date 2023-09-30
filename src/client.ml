@@ -12,6 +12,7 @@ module Common(IO: S.IO) = struct
   module IO = IO
 
   let (>>=) = IO.(>>=)
+  let (>|=) = IO.(>|=)
 
   type redirection = {
     slot: int;
@@ -362,8 +363,7 @@ module Common(IO: S.IO) = struct
            | ai::_ -> IO.return ai
            | [] -> IO.fail (Failure "Could not resolve redis host!")
        in
-       addr_info >>= fun {ai_family; ai_addr; _} ->
-       IO.return (ai_family, ai_addr))
+       addr_info >|= fun {ai_family; ai_addr; _} -> (ai_family, ai_addr))
     >>= fun (ai_family, ai_addr) ->
     IO.connect ai_family ai_addr >>= fun fd ->
     let in_ch = IO.in_channel_of_descr fd in
