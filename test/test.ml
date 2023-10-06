@@ -39,6 +39,7 @@ module Make(Client : Redis.S.Client)(U : UTILS with module IO = Client.IO) : sig
   val suite : string -> OUnit2.test
   val teardown : unit -> unit
   val redis_specs : containers
+  val redis_spec_no_auth : Client.connection_spec
   val bracket : ?spec:Client.connection_spec -> (Client.connection -> 'a Client.IO.t) -> 'ctx -> 'a
 end = struct
 
@@ -59,6 +60,8 @@ end = struct
       with_auth = Client.({host=redis_test_host (); port=redis_test_port_with_auth }); 
       with_acl = Client.({host=redis_test_host (); port=redis_test_port_with_acl });
     }
+
+  let redis_spec_no_auth = redis_specs.no_auth
 
   let io_assert msg check result =
     IO.return (assert_bool msg (check result))
