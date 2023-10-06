@@ -11,22 +11,15 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Cache opam
-        id: cache-opam
-        uses: actions/cache@v2
+      - uses: ocaml/setup-ocaml@v2
         with:
-          path: ~/.opam
-          key: opam-ubuntu-latest-4.12.0
-
-      - uses: avsm/setup-ocaml@v1
-        with:
-          ocaml-version: '4.12.0'
+          ocaml-compiler: 4.12.x
 
       - name: Pin
         run: opam pin -n .
 
       - name: Depext
-        run: opam depext -yt redis redis-sync
+        run: opam depext -yt redis redis-sync redis-lwt
 
       - name: Deps
         run: opam install -d . --deps-only
