@@ -24,6 +24,7 @@ depends: [
   "stdlib-shims"
   "re" {>= "1.7.2"}
   "ocaml" { >= "4.03.0" }
+  "containers" {with-test & >= "3.0"}
   "odoc" {with-doc}
   "containers" {with-test}
   "ounit2" {with-test}
