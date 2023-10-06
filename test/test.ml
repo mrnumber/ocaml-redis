@@ -260,12 +260,12 @@ end = struct
     io_assert "Can't check expiration timeout for key"
       (function None -> false | Some x -> x >= 4 && x <= 6) >>= fun () ->
 
-    let pexpiry = int_of_float (Unix.time ()) * 1000 + 1000 in
+    let pexpiry = int_of_float (Unix.gettimeofday () *. 1000. +. 1000.) in
     Client.pexpireat conn key pexpiry >>=
     io_assert "Can't set expiration timeout for key (in ms)" ((=) true) >>= fun () ->
     Client.pttl conn key >>| function
     | Some pttl ->
-      assert_bool "Expiration timeout differs from setted" (0 <= pttl && pttl <= 1000)
+      assert_bool (Printf.sprintf "Expiration timeout differs from setted (by %dms)" pttl) (0 <= pttl && pttl <= 1000)
     | None ->
       assert_failure "Can't check expiration timeout for key"
 
