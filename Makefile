@@ -1,11 +1,12 @@
 
+DOCKER_COMPOSE?=docker-compose
 all: build test
 
 build:
 	@dune build @all
 
 test:
-	@docker-compose up -d
+	@$(DOCKER_COMPOSE) up -d
 	@(dune runtest --force --no-buffer; EXIT_CODE="$$?"; docker-compose down; exit $$EXIT_CODE)
 
 clean:
