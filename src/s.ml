@@ -96,9 +96,10 @@ module type Client = sig
 
   val connection_spec : ?port:int -> string -> connection_spec
   (** Create a connection spec with the given host.
-      Specify a path and port 0 to use unix domain sockets.
-      @param port Port to connect to (default [6379])
+      @param port port to connect to (default [6379])
       @since 0.5 *)
+
+  val connection_spec_unix_socket : string -> connection_spec
 
   module SlotMap : Map.S with type key = int
   module ConnectionSpecMap : Map.S with type key = connection_spec

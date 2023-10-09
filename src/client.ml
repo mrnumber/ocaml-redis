@@ -53,6 +53,8 @@ module Common(IO: S.IO) = struct
 
   let connection_spec ?(port=6379) host = {host; port}
 
+  let connection_spec_unix_socket socket = {host = socket; port = 0}
+
   module SlotMap = Map.Make(struct
       type t = int
       let compare = Stdlib.compare
@@ -500,6 +502,7 @@ module type Mode = sig
   }
 
   val connection_spec : ?port:int -> string -> connection_spec
+  val connection_spec_unix_socket : string -> connection_spec
 
   module SlotMap : Map.S with type key = int
   module ConnectionSpecMap : Map.S with type key = connection_spec
