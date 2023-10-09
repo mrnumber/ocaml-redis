@@ -63,10 +63,10 @@ end = struct
 
   let redis_specs : containers =
     {
-      no_auth = Client.({host=redis_test_host (); port=redis_test_port });
-      with_auth = Client.({host=redis_test_host (); port=redis_test_port_with_auth }); 
-      with_acl = Client.({host=redis_test_host (); port=redis_test_port_with_acl });
-      unix_socket = Client.({host=redis_test_socket (); port=0 });
+      no_auth = Client.connection_spec ~port:redis_test_port (redis_test_host ());
+      with_auth = Client.connection_spec ~port:redis_test_port_with_auth (redis_test_host ());
+      with_acl = Client.connection_spec ~port:redis_test_port_with_acl (redis_test_host ());
+      unix_socket = Client.connection_spec_unix_socket (redis_test_socket ());
     }
 
   let redis_spec_no_auth = redis_specs.no_auth
