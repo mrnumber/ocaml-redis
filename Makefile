@@ -1,5 +1,7 @@
+DOCKER_COMPOSE ?= docker-compose
 
-DOCKER_COMPOSE?=docker-compose
+export OCAML_REDIS_TEST_SOCKET=$(CURDIR)/socket/redis.sock
+
 all: build test
 
 build:
@@ -7,7 +9,7 @@ build:
 
 test:
 	@$(DOCKER_COMPOSE) up -d
-	@(dune runtest --force --no-buffer; EXIT_CODE="$$?"; docker-compose down; exit $$EXIT_CODE)
+	@(dune runtest --force --no-buffer; EXIT_CODE="$$?"; $(DOCKER_COMPOSE) down; exit $$EXIT_CODE)
 
 clean:
 	@dune clean

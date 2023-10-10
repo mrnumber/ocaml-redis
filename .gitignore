@@ -8,5 +8,5 @@
 .merlin
 *.install
 *.exe
-
 /result*
+/socket/redis.sock

@@ -12,6 +12,7 @@ module Common(IO: S.IO) = struct
   module IO = IO
 
   let (>>=) = IO.(>>=)
+  let (>|=) = IO.(>|=)
 
   type redirection = {
     slot: int;
@@ -51,6 +52,8 @@ module Common(IO: S.IO) = struct
   }
 
   let connection_spec ?(port=6379) host = {host; port}
+
+  let connection_spec_unix_socket socket = {host = socket; port = 0}
 
   module SlotMap = Map.Make(struct
       type t = int
@@ -349,8 +352,22 @@ module Common(IO: S.IO) = struct
     | None   -> IO.return []
 
   let connect spec =
-    let {host=host; port=port} = spec in
-    IO.connect host port >>= fun fd ->
+    (match spec with
+     | {host=socket; port=0} ->
+       IO.return (Unix.PF_UNIX, Unix.ADDR_UNIX socket)
+     | {host=host; port=port} ->
+       let port = string_of_int port in
+       let addr_info =
+         IO.getaddrinfo host port [AI_FAMILY PF_INET] >>= function
+         | ai::_ -> IO.return ai
+         | [] ->
+           IO.getaddrinfo host port [AI_FAMILY PF_INET6] >>= function
+           | ai::_ -> IO.return ai
+           | [] -> IO.fail (Failure "Could not resolve redis host!")
+       in
+       addr_info >|= fun {ai_family; ai_addr; _} -> (ai_family, ai_addr))
+    >>= fun (ai_family, ai_addr) ->
+    IO.connect ai_family ai_addr >>= fun fd ->
     let in_ch = IO.in_channel_of_descr fd in
     IO.return
       { fd = fd;
@@ -485,6 +502,7 @@ module type Mode = sig
   }
 
   val connection_spec : ?port:int -> string -> connection_spec
+  val connection_spec_unix_socket : string -> connection_spec
 
   module SlotMap : Map.S with type key = int
   module ConnectionSpecMap : Map.S with type key = connection_spec

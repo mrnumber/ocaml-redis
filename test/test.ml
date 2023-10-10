@@ -6,6 +6,12 @@ let redis_test_host () =
   with Not_found ->
     "127.0.0.1"
 
+let redis_test_socket () =
+  try
+    Sys.getenv("OCAML_REDIS_TEST_SOCKET")
+  with Not_found ->
+    failwith "Environment variable OCAML_REDIS_TEST_SOCKET must be set"
+
 let redis_test_port = 63791
 let redis_test_port_with_auth = 63792
 let redis_test_port_with_acl = 63793
@@ -52,13 +58,15 @@ end = struct
     no_auth : Client.connection_spec;
     with_auth : Client.connection_spec;
     with_acl : Client.connection_spec;
+    unix_socket : Client.connection_spec;
   }
 
   let redis_specs : containers =
     {
-      no_auth = Client.({host=redis_test_host (); port=redis_test_port });
-      with_auth = Client.({host=redis_test_host (); port=redis_test_port_with_auth }); 
-      with_acl = Client.({host=redis_test_host (); port=redis_test_port_with_acl });
+      no_auth = Client.connection_spec ~port:redis_test_port (redis_test_host ());
+      with_auth = Client.connection_spec ~port:redis_test_port_with_auth (redis_test_host ());
+      with_acl = Client.connection_spec ~port:redis_test_port_with_acl (redis_test_host ());
+      unix_socket = Client.connection_spec_unix_socket (redis_test_socket ());
     }
 
   let redis_spec_no_auth = redis_specs.no_auth
@@ -661,6 +669,7 @@ end = struct
         "test_case_auth" >:: (bracket ~spec:redis_specs.with_auth test_case_auth);
         "test_case_acl" >:: (bracket ~spec:redis_specs.with_acl test_case_acl);
         "test_case_ping" >:: (bracket test_case_ping);
+        "test_case_unix_socket" >:: (bracket ~spec:redis_specs.unix_socket test_case_ping);
         "test_case_echo" >:: (bracket test_case_echo);
         "test_case_info" >:: (bracket test_case_info);
         "test_case_keys" >:: (bracket test_case_keys);

@@ -32,7 +32,7 @@ jobs:
     - name: Start containers
       run: docker-compose up -d
       if: ${{ matrix.os == 'ubuntu-latest'}}
-    - run: opam exec -- dune runtest
+    - run: OCAML_REDIS_TEST_SOCKET=$PWD/socket/redis.sock opam exec -- dune runtest
       if: ${{ matrix.os == 'ubuntu-latest'}}
     - name: Stop containers
       run: docker-compose down

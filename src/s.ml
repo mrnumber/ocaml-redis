@@ -8,7 +8,8 @@ module type IO = sig
   type 'a stream
   type stream_count
 
-  val connect : string -> int -> fd t
+  val getaddrinfo : string -> string -> Unix.getaddrinfo_option list -> Unix.addr_info list t
+  val connect : Unix.socket_domain -> Unix.sockaddr -> fd t
   val close : fd -> unit t
   val sleep : float -> unit t
 
@@ -97,6 +98,8 @@ module type Client = sig
   (** Create a connection spec with the given host.
       @param port port to connect to (default [6379])
       @since 0.5 *)
+
+  val connection_spec_unix_socket : string -> connection_spec
 
   module SlotMap : Map.S with type key = int
   module ConnectionSpecMap : Map.S with type key = connection_spec
