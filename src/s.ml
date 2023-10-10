@@ -100,6 +100,8 @@ module type Client = sig
       @since 0.5 *)
 
   val connection_spec_unix_socket : string -> connection_spec
+  (** Create a connection spec to use the given Unix socket.
+      @since 0.7 *)
 
   module SlotMap : Map.S with type key = int
   module ConnectionSpecMap : Map.S with type key = connection_spec

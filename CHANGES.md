@@ -1,6 +1,12 @@
 # Changelog
 
-## WIP
+## 0.7
+
+
+- add ability to connect to redis via unix sockets (Albert Peschar)
+- add a connection pool implementation
+- bugfix: fix out of order arguments caused by excessive concurrency
+    in redis-lwt (Khady)
 
 ## 0.6
 
