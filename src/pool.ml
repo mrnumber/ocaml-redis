@@ -39,7 +39,6 @@ module Make(IO : S.IO)(Client : S.Client with module IO=IO)
       closed = false;
     } in
     init_conns self size >>= fun () ->
-    Format.printf "queue: %d@." (Queue.length self.pool);
     IO.return self
 
   let close (self:t) : unit IO.t =
