@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.1
+
+fix: remove debug message in pool
+
 ## 0.7
 
 
