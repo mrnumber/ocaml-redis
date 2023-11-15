@@ -1,0 +1,31 @@
+opam-version: "2.0"
+version: "0.7.1"
+maintainer: "Simon Cruanes"
+authors: [
+  "Mike Wells"
+  "David Höppner"
+  "Aleksandr Dinu"
+]
+homepage: "https://github.com/0xffea/ocaml-redis"
+bug-reports: "https://github.com/0xffea/ocaml-redis/issues"
+license: "BSD-3-Clause"
+tags: ["redis"]
+dev-repo: "git+https://github.com/0xffea/ocaml-redis.git"
+synopsis: "Redis client"
+build: [
+  ["dune" "build" "-p" name "-j" jobs]
+  # ["dune" "runtest" "-p" name "-j" jobs] {with-test} # need network
+  ["dune" "build" "@doc" "-p" name "-j" jobs] {with-doc}
+]
+depends: [
+  "dune" { >= "1.0" }
+  "base-unix"
+  "uuidm"
+  "stdlib-shims"
+  "re" {>= "1.7.2"}
+  "ocaml" { >= "4.03.0" }
+  "containers" {with-test & >= "3.0"}
+  "odoc" {with-doc}
+  "containers" {with-test}
+  "ounit2" {with-test}
+]

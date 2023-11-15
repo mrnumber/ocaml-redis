@@ -1,0 +1,22 @@
+version: "3"
+
+services:
+  no_auth:
+    image: "redis:6-alpine"
+    ports:
+      - "63791:6379"
+  with_auth:
+    image: "redis:6-alpine"
+    command: redis-server --requirepass some-password
+    ports:
+      - "63792:6379"
+  with_acl:
+    build: ./test/docker/with_acl
+    ports:
+      - "63793:6379"
+  unix_socket:
+    image: "redis:6-alpine"
+    command: |
+      sh -xc "chmod 777 /socket && redis-server --unixsocket /socket/redis.sock --unixsocketperm 777"
+    volumes:
+      - ./socket:/socket

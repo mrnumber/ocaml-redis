@@ -1,38 +1,25 @@
-# OASIS_START
-# DO NOT EDIT (digest: bc1e05bfc8b39b664f29dae8dbd3ebbb)
+DOCKER_COMPOSE ?= docker-compose
 
-SETUP = ocaml setup.ml
+export OCAML_REDIS_TEST_SOCKET=$(CURDIR)/socket/redis.sock
 
-build: setup.data
-	$(SETUP) -build $(BUILDFLAGS)
+all: build test
 
-doc: setup.data build
-	$(SETUP) -doc $(DOCFLAGS)
+build:
+	@dune build @all
 
-test: setup.data build
-	$(SETUP) -test $(TESTFLAGS)
+test:
+	@$(DOCKER_COMPOSE) up -d
+	@(dune runtest --force --no-buffer; EXIT_CODE="$$?"; $(DOCKER_COMPOSE) down; exit $$EXIT_CODE)
 
-all: 
-	$(SETUP) -all $(ALLFLAGS)
+clean:
+	@dune clean
 
-install: setup.data
-	$(SETUP) -install $(INSTALLFLAGS)
+watch:
+	@dune build @all -w
 
-uninstall: setup.data
-	$(SETUP) -uninstall $(UNINSTALLFLAGS)
+reindent:
+	@for dir in src examples tests/ ; do \
+	  find $(dir) -name '*.ml*' -exec ocp-indent -i {} \; ; \
+	done
 
-reinstall: setup.data
-	$(SETUP) -reinstall $(REINSTALLFLAGS)
-
-clean: 
-	$(SETUP) -clean $(CLEANFLAGS)
-
-distclean: 
-	$(SETUP) -distclean $(DISTCLEANFLAGS)
-
-setup.data:
-	$(SETUP) -configure $(CONFIGUREFLAGS)
-
-.PHONY: build doc test all install uninstall reinstall clean distclean configure
-
-# OASIS_STOP
+.PHONY: all build test clean watch
